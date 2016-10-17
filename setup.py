@@ -6,7 +6,7 @@
 # in your .cshrc
 # alias imstat '~/archangel/util/imstat.py "\!*"'
 
-# note: gfortran gasp.f -o gasp -L/usr/local/cfitsio -lcfitsio -fno-range-check -finit-local-zero -fno-automatic 
+# note: gfortran gasp.f -o gasp -L/usr/local/lib -lcfitsio -fno-range-check -finit-local-zero -fno-automatic 
 
 import os, sys
 
@@ -97,7 +97,7 @@ if sys.argv[-1] in ['./setup.py','basic','build']:
 
   print 'testing for cfitsio libs ... ',
   try:
-    t=os.popen(complier+' util/cfitsio_test.f -o junk -L/opt/local/cfitsio -lcfitsio -fno-range-check -finit-local-zero -fno-automatic').read()
+    t=os.popen(complier+' util/cfitsio_test.f -o junk -L/opt/local/lib -lcfitsio -fno-range-check -finit-local-zero -fno-automatic').read()
     if 'g' not in t:
       r=os.popen('./junk examples/ned_test.fits').read()
       if '0' in r:
@@ -228,7 +228,7 @@ try:
              try:
                if name.split('.')[0] == file and name.split('.')[1] == 'f': 
                  check=open(root+'/'+file+'.f','r').read()
-                 options=options+' -L/opt/local/cfitsio -lcfitsio -fno-range-check -finit-local-zero -fno-automatic'
+                 options=options+' -L/opt/local/lib -lcfitsio -fno-range-check -finit-local-zero -fno-automatic'
 
 #                 if check.find('pgbegin') > 0: options=options+' -finit-local-zero -L/usr/lib -lpgplot -lX11 -lgcc'
 #                 if check.find('ftopen') > 0:
@@ -356,7 +356,7 @@ try:
            try:
              if name.split('.')[0] == file and name.split('.')[1] == 'f': 
                check=open(root+'/'+file+'.f','r').read()
-               options=options+' -L/opt/local/cfitsio -lcfitsio -fno-range-check -finit-local-zero -fno-automatic'
+               options=options+' -L/opt/local/lib -lcfitsio -fno-range-check -finit-local-zero -fno-automatic'
 
 #               if check.find('pgbegin') > 0: 
 #                 options=options+' -finit-local-zero -L/usr/lib -lpgplot -lX11 -lgcc'
