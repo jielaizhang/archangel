@@ -5,6 +5,9 @@ import astropy.io.fits as pyfits
 from math import *
 from xml_archangel import *
 import subprocess
+import matplotlib
+matplotlib.use('TkAgg')
+import matplotlib.pyplot as plt
 from pylab import *
 from matplotlib.ticker import MultipleLocator
 from matplotlib.patches import Ellipse
@@ -1500,7 +1503,7 @@ if __name__ == '__main__':
   if 'prometheus' in os.uname()[1]:
     fig = figure(figsize=(12, 12), dpi=80)  # initialize plot parameters
     ax = fig.add_subplot(111)  # assign ax for text and axes
-    manager = get_current_fig_manager() # next 3 lines removes window title and sets geometry of Tk
+    manager = plt.get_current_fig_manager() # next 3 lines removes window title and sets geometry of Tk
     manager.window.title('')
     manager.window.geometry('+1200+300') # move the window for deepcore big screen
   else:
