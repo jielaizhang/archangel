@@ -1,0 +1,3 @@
+This directory contains the examples for the package.  The fits files and
+output XML files are included.  If the user reruns the scripts, you should make a
+copy of the XML files to compare to.

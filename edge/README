@@ -1,0 +1,3 @@
+This directory contains the experimental programs for reducing edge-on systems.
+The philosophy here is to determine the ridgeline isophote and convert that
+into surface brightness units meaningful for comparison to ellipse fitting.

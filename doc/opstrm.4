@@ -1,0 +1,123 @@
+.so /home/js/warehouse/tmac.focas
+.FH OPSTRM 4 KPNO
+.SH NAME
+opstrm \- operate on an ascii stream
+.SH SYNOPSIS
+.B opstrm
+[options]
+.SH DESCRIPTION
+Manipulate and do reverse polish operations on an ascii stream.
+The options are repeated until the input stream is exhausted.
+All
+quantities printed during a single pass of the options appears on
+one line.  Input should be numerical except the options skip 's'
+and copy 'c' can also operate on strings.  The logic is reverse
+polish with a stack (up to 100 entries) and 9 storage registers.
+The top of the stack is called x, the next y, and the third z.
+The input numerical values read by 'r' and off the argument list
+are read as floating point values and all calculations are performed
+in floating point.  The printed ('=') output values use a g format
+(see C programming manual) but the output format may be changed
+by the 'fformat' option.  Since the data is floating point only those
+C format types dealing with floating point number can be used;
+i.e. e, f, or g.
+
+If no options are present then opstrm will act as a calculator
+using the same options.  The options are listed in the HELP TEXT
+section.
+
+This is the premier stream program.  It can be made to do a vast number
+of useful things.
+This program is heavily used with skip(4), lines(4), and fltstrm(4) to produce
+input for plotting or various statistics functions such
+as statstrm(4), binstrm(4) and linfit(4).
+Some of these other programs can also be implemented with opstrm,
+albeit crudely and inefficiently.
+.SH HELP TEXT
+.FX
+% opstrm ^
+Reverse Polish stream operator
+  usage:  opstrm operators constants
+
+  The argument list is repeated until the end of input and the stack
+  is cleared after each pass.  All output in each pass is put on one line.
+
+  operators: Pfile      The standard input is a program instead of data
+                       which is stored in file.opstrm .
+             Rfile      Substitute the commands in file.opstrm .  Programs
+                       can be nested though watch out for recursion.
+             r         Read value from standard input into x and push down
+                       stack (must be numerical of any format).
+             s         Skip next input value (may be alphabetic).
+             c         Copy input to output (may be alphabetic).
+             =         Write x to the standard output stream.
+             Sstring   Write string to standard output stream.
+             q         Quit (used to do calculation on argument list).
+             e         Enter (or copy) value.
+             pn        Put x value in storage location n (n = 0, 1, ..., 9).
+             gn        Get value from storage location n and put in x.
+             gc        Get value of line counter (starts with 1).
+             gl        Get log of line counter (gl = log(gc)).
+             d         Roll down stack (last x value is lost).
+             +         Add  x + y = x.
+             -         Subtract y - x = x.
+             x         Multiply  x * y = x.
+             /         Divide  y / x = x.
+             i         Invert x and y.
+             Fmax      Compare x and y and put the maximum in x and
+                       the minimum in y
+             Fran      Generate random number between 0 and 1.
+             Fabs      Absolute value of x.
+             Fmag      -2.5 * log(x) = x.
+             Flum      10**( -.4 * x) = x.
+             Fpow      y**x = x.
+             Fgam      x = Complete gamma function of x.
+             Fsq       x = Square x.
+             Fsqrt     x = Square root of x.
+             Flog      x = Base 10 logrithm of x.
+             Fdex      x = 10**x.
+             Fln       x = Natural logrithm of x.
+             Fexp      x = e**x.
+             Fcos      x = cosine of x (radians).
+             Fsin      x = sin of x (radians).
+             Fpolar    Take x and y and replace with radius and angle
+                       (radians) respectively.
+             Fpolar1   Take x and y and replace with radius and angle
+                       (radians between - pi / 2 and pi / 2) respectively.
+             Frec      Take x = radius and y = angle(radians) and replace
+                       with x and y, respectively.
+             Fpois     x = N y = lambda compute lambda**N exp( -lambda) / N!.
+             pi        3.141592654
+             fformat    Set output format (default g).
+             constant  If present constant will be used as operand.
+.EX
+.SH EXAMPLES
+.FX
+Exchange x and y                      opstrm r c =
+Form (x+y-2z)/t                       opstrm r r + r 2 x - r / =
+Rectangular to polar                  opstrm r r Fpolar = i =
+Add a string to stream                opstrm Sx= c Sy= c
+Calculator                            opstrm
+                                      pi 2 x 3 x =
+                                      18.8496 12544 512 / =
+                                      24.5 q
+Program (creates dum.opstrm)          opstrm Pdum
+                                      r Fmag 4 - =
+                                      EOF
+Use program dum.opstrm                opstrm r = Rdum
+Set format for a table of integers    opstrm f5.0f r =
+(Note that copy does not apply the
+format since it is a string copy)
+In a shell script                     set x=`opstrm $1 $2 x = q`
+.EX
+
+Note that the use of opstrm in shell scripts requires 'q' to prevent an
+infinite loop when there is no input data.
+.SH DIAGNOSTICS
+Error messages dealing with improper division or too few values in the
+stack are printed and the program exits.  Non-numeric input in a read will
+cause an infinite loop.
+.SH BUGS
+Logical operations are not included.
+.SH AUTHOR
+Francisco Valdes

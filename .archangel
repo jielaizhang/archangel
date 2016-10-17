@@ -1,0 +1,10 @@
+{
+'main_size'    : '12',
+'main_window'  : '+1200+300',
+'sky_window'   : '500,300',
+'coord_window' : '600,300',
+'peek_window'  : '600,800',
+'listbox'      : '+100+300',
+'text_window'  : '+500+300',
+'entry_field'  : '+200+200'
+}

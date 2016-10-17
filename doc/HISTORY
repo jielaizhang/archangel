@@ -1,0 +1,36 @@
+May 2002 - conversion of GASP PROF and IMAGES to C++, poor performance of C++ code
+           with FITS files forces return to g77 FORTRAN, proposal to NASA to
+           build package
+
+Jun 2002 - IMAGES converted to gasp_images in g77
+
+Jul 2002 - primitive version of PROF converted to jedsub
+
+Aug 2002 - prototype jython web interface developed, ported to Mac OS X
+
+Oct 2002 - PyRAF and CFITIO ported to system, renamed ARCHANGEL for historical reasons
+
+Dec 2002 - sky_box and mask tools developed from old IPL routines
+
+May 2003 - PROF fulled converted and updated to perform pixel subtraction and improve fitting
+           criteria, renamed prof, output is .prf file
+
+Jun 2003 - Utilities based on PyFITS routines constructed, ASCII data format decided on, NaN format
+           follow sqrt(-1.) method
+
+Jul 2003 - IPAC skyview ported to Mac OS X
+
+Dec 2003 - python scripts to expert system the galaxy parameters and do a full surface photometric
+           reduction to .prf level
+
+Jan 2004 - complete python based installation procedure finallized, offical verison 0.1
+
+Feb 2004 - extensive testing on 2MASS large galaxy sample and McGaugh K mass project
+
+Jan 2005 - jedsub renamed efit, main fitting routine, version 0.5
+
+Jun 2005 - client/server established
+
+Nov 2006 - conversion to XML format for output data files
+
+Mar 2007 - 1st documentation finished and placed on astro-ph, v1.0 released

@@ -1,0 +1,2719 @@
+================================  CHAPTER 5 ================================
+
+C Program 5.1: \Chapt-5\HotRod.For
+C Simulated variation of temperature along a metal rod
+C 10 cm rod-temperature is zero at one end, 100 degrees C at other.
+C Uses MonteLib
+     Program HotRod
+     Integer s1, s2, s3, n/10/       ! generate 10 points at 1 cm intervals
+     Real  x, T, Tprime, sigmaT/1.0/ ! with an uncertainty of +-1 degree
+     Real GaussSmear
+        s1 = 1171
+        s2 = 343
+        s3 = 1322
+       Call SetRandomDeviateSeed(s1, s2, s3)
+       Print *,'       Hot Rod Test Data,   sigma=',  sigmaT
+        x = -0.5
+       do 100 i = 1, n
+         x      = x + 1.0           ! position along rod
+         T      = 10.0*x            ! calculate mean temperature at point
+         Tprime = GaussSmear(T,sigmaT)   ! smear it
+         Print *,i, x, T, Tprime
+  100   continue
+       Call Exit
+     END
+     Include '\Chapt-5\MonteLib.For'
+     Include '\Chapt-6\GenUtil.For'   ! used by MonteLib
+
+C Program 5.2: \Chapt-5\PoisDcay.For
+C Simulated decay of an unstable state.
+C Uses QuikHist, MonteLib
+     Program PoisDcay         !  Generate a 200-event Poisson  histogram
+     Real lo/0/, int/1/, hi/22/
+     Integer nEvents/400/, PoissonDeviate
+     Real mu/8.4/
+     Integer s1, s2, s3, i, k
+     Real    x
+        s1 = 1171
+        s2 = 343
+        s3 = 1322
+       Call SetRandomDeviateSeed(s1, s2, s3)
+       Call HistInit(' ') !('poisdcay.out') ' '--> output to monitor
+       Call HistSetup(1,lo,int,hi,'Poisson - Counts/10 sec')
+       k=PoissonDeviate(mu,.TRUE.) ! Initialize - make the table
+        do 100 i = 1, nEvents
+         k = PoissonDeviate(mu,.FALSE.)
+          x = k
+         Call Histogram(1,x)
+  100   continue
+       Call HistDisplayAll(.TRUE. ) ! TRUE -> script file for graphics
+       Call Exit
+     END
+     Include \Chapt-5\MonteLib.For
+     Include \Append-D\QuikHist.For
+     Include \Append-D\QuikScrp.For ! used by QuikHist
+     Include \Chapt-6\GenUtil.For   ! used by QuikHist, QuikScrp, MonteLib
+
+
+C Program 5.3: \Chapt-5\MonteLib.For
+C Monte Carlo library routines
+C Uses GenUtil
+     Subroutine SetRandomDeviateSeed(sa,sb,sc)
+     Include '\Chapt-5\MonteInc.For'
+     Integer sa, sb, sc
+       seed1 = sa
+       seed2 = sb
+       seed3 = sc
+       Return
+     END
+
+     Subroutine GetRandomDeviateSeed(sa,sb,sc)
+     Include '\Chapt-5\MonteInc.For'
+     Integer sa, sb, sc
+       sa = seed1
+       sb = seed2
+       sc = seed3
+       Return
+     END
+
+     Real Function RandomDeviate()            !  Wichmann and Hill
+     Include '\Chapt-5\MonteInc.For'
+     Real  temp
+       seed1 = 171*Mod(seed1,177) - 2*(seed1 / 177)
+          if (seed1 .LT. 0 ) seed1 = seed1 + 30269
+       seed2 = 172*Mod(seed2,176) - 35*(seed2 / 176)
+          if (seed2 .LT. 0 ) seed2 = seed2 + 30307
+       seed3 = 170*Mod(seed3,178) - 63*(seed3 / 178)
+          if (seed3 .LT. 0 ) seed3 = seed3 + 30323
+       temp = seed1/30269. + seed2/30307. + seed3/30323.
+       RandomDeviate = temp-Aint(temp)
+       Return
+     END
+
+C -Find a random variable drawn from the Gaussian distribution-
+     Real Function RandomGaussDeviate()           ! Box-Mueller
+     Include '\Chapt-5\MonteInc.For'
+     Logical  nextVar/.false./
+     Real r, f, z1, z2, x1RanGauss, RandomDeviate
+       if (nextVar) then
+          nextVar = .false.
+          RandomGaussDeviate = X2RanGauss
+       else
+ 100      z1 = -1 + 2*RandomDeviate()
+         z2 = -1 + 2*RandomDeviate()
+         r  = z1*z1 + z2*z2
+         if (r .GE. 1) goto 100
+         f = sqrt(-2*Alog(r)/r)
+          X1RanGauss = z1*f
+          X2RanGauss = z2*f
+          RandomGaussDeviate = X1RanGauss
+         nextVar = .true.
+       endIf
+       Return
+     END
+
+     Real Function GaussSmear(x,dx)
+     Real x, dx
+     Real RandomGAussDeviate
+       GaussSmear = x + RandomGaussDeviate() * dx
+       Return
+     END
+
+C -Recursion method for Poisson Probability (P(n,m). To find P(n,m) must
+C    all with successive arguments j=0,1,..n. Max mu=85, no limit on x
+     Real Function PoissonRecur(j, m)
+     Include '\Chapt-5\MonteInc.For'
+     Integer j
+     Real m
+       if (j.EQ.0 ) then
+         poiss = exp(-m)
+       else
+         poiss = (poiss*m)/j ! poiss =  (m^j)exp(-mu/j!)
+        endIf
+       PoissonRecur = poiss
+       Return
+     END
+
+C -Find a random variable drawn from the Poisson distribution
+     Integer Function PoissonDeviate(mu, init)
+     Include '\Chapt-5\MonteInc.for'
+     Integer   i, x, n
+     Real      mu, p , r, PoissonRecur
+     Logical   init
+       if (init ) then               ! --- Make table of sums ---
+         n = Aint(mu + 8* sqrt(mu))  ! ie., 8*sigma
+         if (n .GT. maxBins )
+     1      Call ErrorAbort('Overflow err in Poisson dev')
+         Ptable(0) = PoissonRecur(0,mu)
+         do 100 i = 1, n-1
+            p = PoissonRecur(i,mu)
+          Ptable(i) = Ptable(i-1)+p
+  100     continue
+         Ptable(n) = 1               ! --- Assure unit probability ---
+       else                          ! --- Generate an event ---
+          x = -1
+         r = RandomDeviate()
+  200     x = 1 + x
+         if (Ptable(x) .LE. r) goto 200
+          PoissonDeviate = x
+       endIf
+       Return
+     END
+
+C Program 5.4:  \Chapt-5\MonteInc.For
+C Common for Monte Carlo Library
+     Common/MC/ seed1, seed2, seed3, x2RanGauss, Poiss, Ptable
+     Parameter (maxBins = 100)
+     Integer seed1, seed2, seed3
+     Real x2RanGauss, Ptable(0:maxBins)
+     Real*8 poiss
+C---------------End MonteInc  --------------------------
+
+
+================================  CHAPTER 6 ================================
+C Program 6.1: \Chapt-6\FitLine.For
+C Least-squares fit to a straight line by method of determinants
+C Uses  FitUtil, GenUtil
+     Program FitLine
+C  --------------------------MAIN  ROUTINE-----------------------
+     Include '\Chapt-6\FitVars.For'
+     Character*40  title
+     Character*1 VorG, ReadChar
+     Integer i
+     Real det, chi2, CalcChiSq
+       m = 2                                            ! find 2 parameters
+       Print *, '(V)olts or (G)eiger? '
+       VorG = ReadChar()
+       if (VorG .EQ. 'V') then
+         Call FetchData('\Chapt-6\Volts.Dat' ,title)    ! Example 6.1
+       elseIf ((VorG .EQ. 'G') .OR. (VorG .EQ. 'g')) then
+         Call FetchData('\Chapt-6\Geiger.Dat',title)    ! Example 6.2
+         do 100 i = 1 , nPts
+          x(i)  = 1/x(i)**2                            ! fitting 1/r^2
+  100     continue
+       endIf
+       Call LineFit(det)
+       Call CalculateY           ! fill array Ycalc for CalcChiSq and PlotIt
+       chi2 = CalcChiSq()
+       Call OutPut(.FALSE. , 'CON', chi2, title)  !FALSE for no error matrix
+       if (VorG .EQ. 'V') then
+         Call PlotIt('FitLine.SCR',.FALSE.,.FALSE.,!scrpt file,log?,spline?
+     1        'C', abs(x(2)-x(1))/20,              !data Circle, rad of Circle
+     2         0.0, 0.0, 100.0, 3.0,               ! x1,y1,x2,y2
+     3         5, 6,                               ! # x-div, # y-div
+     4        'X (cm)', 'Potential Diff(erence (Volts)')  ! axis labels
+       elseIF (VorG .EQ. 'G') then
+       Call PlotIt('FitLine.SCR',.FALSE. ,.FALSE.,
+     1         'C', abs(x(2)-x(1))/50,  0.0, 0.0, 30.0, 1000.0,  6, 5,
+     2  'Squared Inverse Distance (1/m^2)', 'Number of Counts per sec')
+       endIf
+       read *
+       Call CloseGraphics
+     END
+
+     Subroutine CalculateY          ! fills array Ycalc
+     Include '\Chapt-6\FitVars.For'
+     Integer i
+       do 100 i= 1 , nPts
+         yCalc(i) = a(1) + a(2)*x(i)
+  100   continue
+       Return
+     END
+
+     Real Function CalcChiSq() ! assumes array yCalc has been filled
+     Include '\Chapt-6\FitVars.For'
+     Integer  i
+     Real     chi2
+        chi2=0.
+       do 100 i = 1 , nPts
+         chi2 = chi2 + ( (y(i)-yCalc(i))/sigY(i))**2
+  100   continue
+       CalcChiSq = chi2
+       Return
+     END
+
+     Subroutine LineFit(det)
+     Include '\Chapt-6\FitVars.For'
+     Real det
+     Integer i
+     Real sumWt, sumX, sumY, sumX2, sumY2, sumXY, weight
+       sumWt = 0
+       sumX  = 0
+       sumY  = 0
+       sumX2 = 0
+       sumY2 = 0
+       sumXY = 0
+C  --------- accumulate weighted sums -----------
+       do 100  i= 1 , nPts
+         weight  = 1/sigY(i)**2
+         sumWt   = sumWt  + weight
+         sumX    = sumX   + weight * x(i)
+         sumY    = sumY   + weight * y(i)
+         sumX2   = sumX2  + weight * x(i)**2
+         sumY2   = sumY2  + weight * y(i)**2
+         sumXY   = sumXY  + weight * x(i)*y(i)
+  100   continue
+C ---calculate the parameters - cut out if determinant is not > 0 ---
+        det =  sumWt * sumX2 - sumX * sumX
+       if (det .GT. 0 )  then
+          a(1)     = (sumx2*sumY  - sumX*sumXY)/det
+          a(2)     = (sumXY*sumWt - sumX*sumY) /det
+          sigA(1)  = sqrt(sumX2/det)
+          sigA(2)  = sqrt(sumWt/det)
+       else
+         Call ErrorAbort('Determinant < or = 0 in LineFit')
+       endIF
+       Return
+     END
+     Include '\Chapt-6\FitUtil.For'
+     Include '\Chapt-6\GenUtil.For'
+     Include '\Append-D\QuikScrp.For'  ! used by FitUtil
+
+C Program 6.2: \Chapt-6\FitVars.For
+C Include file of constants, variables and  arrays for least-squares fits
+C -All global Types, Constants and Variables are declared here.
+C    The array limits maxData and MaxParam can be set as required
+C                                             for particular problems.
+     Integer maxData, maxParam, nPts, m, nFree
+     Real x, y, sigY, yCalc, a, sigA, beta, alpha,
+     1 y0, deltaA, dA, chiSq1, chiSq2, chiSq3, chiOld, chiCut,
+     2 stepSize, dYda, grad
+     Parameter(maxData=100, maxParam=10)
+     Common/FitVars/
+     1 nPts, m, nFree, x(maxData), y(maxData), sigY(maxData),
+     2 yCalc(maxData), a(maxParam), sigA(maxParam), beta(maxParam),
+     3 alpha(maxParam,maxParam),
+C
+C  -- Variables used by non-linear methods --
+     4 y0(maxData), deltaA(maxParam), dA(maxParam), chiSq1, chiSq2,
+     5 chiSq3, chiOld, chiCut, stepSize, dYdA(maxData, maxPAram),
+     6 grad(maxParam)
+
+C Program 6.3: \Chapt-6\FitUtil.For
+C Utility routines for fitting programs
+C Uses GenUtil, QuikScrp
+     Real Function ChiX(x) ! Used by Simpson - only 1 arg allowed
+     Common/util/ glSimps
+     Real glSimps
+     Real x
+       if (x.EQ.0) then
+         ChiX = 0.0
+       else
+         ChiX = x**(glSimps-1)*exp(-x/2)  ! glSimps = h = nFree/2
+       endIf
+       Return
+     END
+
+     Real Function ChiProb(nFree, chi2) ! max nFree =  56
+     External ChiX
+     Common/util/ glSimps
+     Real ChiX, Simpson, glSimps
+     Integer nFree
+     Real pi, chi2, cLim, intFromLim
+     Data    cLim /2/,                  ! expansion limit for nFree = 1
+     1        intFromLim /0.157/,        ! integral from cLim to infinity
+     2        dx0 /0.2/                  ! determines accuracy of integration
+     3        pi/3.14159/
+     Integer nInt
+       if (chi2 .GE. 1) then
+         nInt = (chi2+0.0001)/dx0
+       else
+         nInt = 5
+       endIf
+       if (chi2 .GT. 15*sqrt(nFree) ) then   ! quick cutout
+       ChiProb = 0
+       else
+         glSimps = float(nFree)/2            ! glSimps is global for ChiX
+         if (nFree .EQ. 1 )    then
+          if (chi2 .LT. cLim ) then
+              ChiProb = 1-sqrt(chi2/2/pi)*
+     1        (2 - chi2*(1/3 - chi2*(1/20 - chi2*(1/168 - chi2/1728))))
+          else
+            ChiProb = intFromLim - Simpson(ChiX,nInt,cLim,chi2)
+     1                              /Gamma(nFree/2.0)/2.0**(nFree/2.0)
+          endIf                             ! if (chi2 ...)
+
+
+         else if (nFree .EQ. 2 ) then
+          ChiProb = exp(-chi2/2)            ! Integrable
+         else
+          ChiProb =  1 - Simpson(ChiX, nInt, 0, chi2)
+     1                            /Gamma(nFree/2.0)/2.0**(nFree/2.0)
+         endIf                               ! if (nFree ...)
+       endIf
+       Return                                ! if (nFree ...)
+     END
+
+     Real Function ChiProbDens(x,nFree)
+     Real num, den, h, x
+     Integer nFree
+       h = nFree/2.0
+       num = x**(h-1) * exp(-x/2)
+       den =  2**h * gamma(h)
+       ChiProbDens = num/den
+       Return
+     END
+
+     Subroutine ErrorMatrix    ! list the error matrix
+     Include '\Chapt-6\FitVars.For'
+     Integer j,k
+       Write (6,*)
+       Write (6,*) 'Error matrix - Alpha'
+        do 100 j = 1,m
+         write(6, 1000) (alpha(j,k), k = 1,m)
+         write(6,*)
+  100   continue
+ 1000   Format(6E12.4)
+       Return
+     END
+
+     Subroutine FetchData(fName, title)
+     Character*(*) fName, title
+     Include '\Chapt-6\FitVars.For'
+     Integer i
+       Open(5, fName)
+       Read(5, 1000) title
+ 1000 Format(A40)
+       Read(5, *) nPts
+       do 100 i = 1, nPts
+         read(5, *) x(i), y(i), sigY(i)
+         if (SigY(i) .EQ. 0 ) sigY(i) = sqrt(Y(i)) ! Poisson uncertainty
+         if (sigY(i) .EQ. 0 ) sigY(i) = 1
+ 100   continue
+       Close(5)
+       Return
+     END
+
+     Subroutine FetchParameters
+     Include '\Chapt-6\FitVars.For'
+     Integer  i, m1
+       Print *, 'Type number of parameters (or -8, -9 for Ch 8,9 sample
+     1 data) '
+       Read *, m1
+       if (m1 .GT. 0) then
+         m = m1
+         Print *, 'Type starting values for ',m, ' parameters: '
+         Read *,  (a(i), i = 1, m)
+       elseIf (m1 .EQ. -8) then
+          m = 5                       ! for Chapter 8
+          a(1) = 10.0
+          a(2) = 900.0
+          a(3) = 80.0
+          a(4) = 27.0
+          a(5) = 225.0
+       elseIf (m1 .EQ. -9) then
+          m = 6                       ! for Chapter 9
+          a(1) =   1.0
+          a(2) =   1.0
+          a(3) =   1.0
+          a(4) =   1.0
+          a(5) =   1.0
+          a(6) =   0.1
+       endIf
+       nFree = nPts - m
+       if (nFree .LE. 0 )
+     1          Call ErrorAbort('Less than 1 degree of freedom.')
+       do 100 i = 1, m
+  100     deltaA(i) = stepSize*abs(a(i)) ! Implies a(i) must not be 0,
+
+       Return
+     END
+
+     Subroutine OutPut(errMatrix, outDev, chi2, title)
+     Logical errMatrix
+     Character*(*) title, outDev
+     Real chi2
+     Integer i
+     Real chiProb, c2PerDof
+     Include '\Chapt-6\FitVars.For'
+     Open(unit=6, file=outDev)          ! allow output to printer or file
+       nFree = nPts-m
+       c2PerDof = chi2/nFree
+         chiPrb = 100*chiProb(nFree, chi2)
+       Write(6, *)
+       Write(6, 1000)  title
+ 1000   Format(1xA40)
+       Write(6, 1010)  chi2, nFree, c2PerDof,chiPrb
+ 1010   Format(' Chi2Sq = ', F7.2, ' for', I3, ' deg of freedom,',
+     1   ' chiSq/dof = ',F5.3,/,', ChiSq probability = ',F5.1, '%')
+       Write(6, 1020) m
+ 1020   Format(' Fitted parameters: a(1) - a[',I2,']')
+       Write(6, 1030) (a(i), i=1,m)
+ 1030   Format(8F10.4)
+       Write(6, 1040) m
+ 1040   Format(' Uncertainties: sigmaA(1) - sigmaA[',I2,']')
+       Write(6, 1030) (sigA(i), i=1,m)
+       If (errMatrix ) Call ErrorMatrix
+       Print *
+       Print *,'Hit Enter to continue.'
+       Read *
+       Write(6, 1050)
+ 1050   Format('   pt #    X             Y         dY      yCalc ')
+       do 200 i = 1,nPts
+         Write(6,1060) i, x(i), y(i), sigY(i), yCalc(i)
+ 1060   Format(I5, F10.3, F12.3, F10.3, F10.3)
+  200   continue
+       Print *, 'Hit Enter to continue.'
+       Close(6)
+       Return
+     END
+
+C Plotit does not CloseGraphics. Must be done in calling program.
+     Subroutine PlotIt(scriptF, ifLogPlot, ifSpline,
+     1         dataStyle, dx, ! (C)ircle,or (H)ist; dx for circle
+     2         xLo,yLo,xHi,yHi,
+     3         nxGrid, nyGrid,
+     4         xTitle, yTitle)
+     Character*(*) scriptF, xTitle, yTitle
+     Logical ifLogPlot, ifSpline
+     Character dataStyle
+     Real dx,xLo,yLo,xHi,yHi
+     Integer nxGrid, nyGrid
+     Integer j
+     Real xPrev, yPrev
+     Include '\Chapt-6\FitVars.For'
+     Logical printIt/.FALSE./
+     Character workDrive     /' '/   ! use current drive for work files
+     Integer workMem         /0/     ! 0 gives 32k work space for hard copy
+     Character*4  printer    /'FX'/  ! select printer
+     Character*4  printPort  /'LPT1'/! 'LPT1','PT2','COM1',or 'COM2'
+     Character    pageSize   /'H'/   ! 'H' or 'F' for Half or Full;
+     Character    resolution /'M'/   ! 'L','M', or 'H' for Low, Medium or High
+     Call InitDisplay(printIt, scriptF, workDrive, workMem)
+     If (printIt)
+     1      Call SelectPrinter(printer, printPort, pageSize,resolution)
+       Call InitGraphics(ifLogPlot,'\QDisplay\')
+       x(nPts+1) = 2*x(nPts) - x(nPts-1)  ! last point for histogram plot
+       Call SetXYFormat(7, 7)
+       Call Border(xLo, yLo, xHi, yHi)
+       Call Xgrid(ifLogPlot, nxGrid, 1)   ! full grid on log plots
+       Call Ygrid(ifLogPLot, nyGrid, 1)
+       Call Xlabel(xTitle)
+       Call Ylabel(yTitle)
+       Call OpenWindow
+       xPrev = x(1)
+       yPrev = 0
+       do 100 j=1,nPts
+         if (dataStyle .eq. 'C') then
+          Call RDataCircle(x(j), y(j), dx, sigY(j))
+         elseif (dataStyle .eq. 'H') then
+          Call Rhist(xPrev, yPrev, x(j+1), y(j))
+         endIf
+         yPrev = y(j)
+  100   continue
+       if (ifSpline ) then
+         Call SplineMake(npts, 0, 0, x, yCalc)
+         Call Scurve(1, npts, 15, 0, x)
+       else
+         do 200 j = 1,nPts
+          Call Rcurve(j-1,x(j),yCalc(j))
+  200     continue
+       endIf
+       Return
+     END
+
+C Program 6.4: \Chapt-6\GenUtil.For
+C General Utility Routines
+C
+C Approximate Gamma Function with h = nFree/2
+     Real Function Gamma(h)
+     Real  h,  pi/3.1415927/
+       Gamma = sqrt(2.0*pi) * exp(-h)*(h**(h-0.5)) * (1.0 + 0.0833/h)
+       Return
+     End
+
+C -Simpson's rule for "Functx(x:real):real"
+C  If Functx has other parameters, they must be global, e.g., glSimps
+     Real Function Simpson(Functx, nInts, loLim, hiLim) ! 2 calcs/interval
+     External functX ! this statement req'd in calling pgm also
+     Real  FunctX, sum, x, dx, loLim, hiLim
+     Integer  nInts, i
+       x = loLim
+       dx = (hiLim - loLim)/(2*nInts)
+       sum=Functx(x)
+       sum= sum - FunctX(hiLim)
+      do 100 i = 1, nInts
+          x=x+2*dx
+         sum=sum + 4*FunctX(x-dx) + 2*FunctX(x)
+  100     continue
+        sum = sum
+       Simpson = sum*dx/3.0
+       Return
+     End
+
+     Character Function ReadChar() ! returns upper case
+     Character t
+     Integer iTem
+       Read *, t
+       iTem = iChar(t)
+       if (iTem .Gt. 96) iTem = iTem - 32
+       ReadChar = Char(iTem)
+       Return
+     End
+
+     Logical Function Ask(s)
+     Character*(*)  s
+     Character  readChar
+       Print *, s, ' Y or N '
+       Ask = (readChar() .EQ. 'Y')
+       Return
+     End
+
+     Subroutine ErrorAbort(s)
+       Character*(*) s
+       Print *, s
+       Call Exit
+       Return
+     End
+
+     ---------------  Volts.Data ----------------
+ Counts vs distance
+     10
+ 0.20   901   0
+ 0.25   652   0
+ 0.30   443   0
+ 0.35   339   0
+ 0.40   283   0
+ 0.45   281   0
+ 0.50   240   0
+ 0.60   220   0
+ 0.75   180   0
+ 1.00   154   0
+
+     ---------------  Geiger.Data ----------------
+ Counts vs distance
+     10
+ 0.20   901   0
+ 0.25   652   0
+ 0.30   443   0
+ 0.35   339   0
+ 0.40   283   0
+ 0.45   281   0
+ 0.50   240   0
+ 0.60   220   0
+ 0.75   180   0
+ 1.00   154   0
+
+
+================================  CHAPTER 7 ================================
+
+C Program 7.1: \Chapt-7\MultRegr.For
+C Least-squares fit to a power series and to Legendre polynomials.
+C Uses  FitFunc7, MakeAB7, Matrix, FitUtil, GenUtil
+     Program MultRegr
+C m = num of parameters, nPts=number of data pairs,
+C Data and uncertainties are in arrays  x, y, dy.
+     Include '\Chapt-6\FitVars.For'
+     Common /FitVars7/PAE
+     Character * 1 PAE
+     Real     det, chi2, CalcChiSq
+     Integer  i
+     Logical  spl
+     Character*1 ReadChar
+     Character*40 title
+       Print *,    '(P)ower series, (A)ll Legendre terms to L = 4,'
+       Print *,    'or (E)ven Legendre terms(L = 0,2,4).'
+       Print *,    'Type P,A or E '
+       PAE = ReadChar()
+ 1000   Format(A1)
+       if (PAE .EQ. 'P') then
+         Call FetchData ('\Chapt-7\ThermCou.Dat', title)
+         Print *,    'Type number of parameters '
+         Read *, m
+       elseIf (PAE .EQ. 'A') then
+         Call FetchData('\Chapt-7\LegeAngl.Dat',title)
+         m = 5
+       elseIf (PAE .EQ. 'E' ) then
+         Call FetchData('\Chapt-7\LegeAngl.Dat',title)
+         m = 3
+       endIf  !PAE
+       Call MakeBeta                        ! set up the linear beta matrix
+       Call MakeAlpha                       ! set up the square alpha matrix
+       Call Matinv(m, Alpha, det)           ! invert alph to get beta matrix
+       Call LinearBySquare(m,Beta,Alpha,a)  ! beta x epsilon.EQ.parameter matrix
+       Call CalculateY
+       chi2 = CalcChiSq()
+       do 100 i = 1, m
+         sigA(i) = sqrt(alpha(i,i))
+  100   continue
+       Call OutPut(.TRUE., 'CON', chi2, Title) ! TRUE to print error matrix
+       if (m .GT. 2 ) then
+         spl = .TRUE.                       ! plot a curve
+       else
+         spl = .FALSE.                      ! plot a line
+       endIf
+       if (PAE .EQ. 'P') then
+         Call PlotIt('MultRegr.SCR', .FALSE., spl,    !file,log?,spline
+     1                'C', (x(2)-x(1))/12,   !data Circles, radius of data cir
+     2                -10., -2., 110., 4.,   ! x1,y1, x2,y2
+     3                 6, 6,                 ! x,y grid marks
+     4                'Temperature (degrees Celsius)','Voltage (mV)')
+       else if ((PAE .EQ. 'A') .OR. (PAE .EQ. 'E')) then
+         Call PlotIt('MultRegr.SCR', .FALSE., .TRUE.,
+     1             'C', (x(2)-x(1))/10,   0., 0.,    180., 1500., 6, 6,
+     2             'Theta(degrees)', 'Number of Counts')
+       endIF                                ! PAE
+       Call CloseGraphics
+     END
+     Include '\Chapt-7\FitFunc7.For'
+     Include '\Chapt-7\MakeAB7.For'
+     Include '\Chapt-7\Matrix.For'
+     Include '\Chapt-6\FitUtil.For'
+     Include '\Chapt-6\GenUtil.For'
+     Include '\Append-D\QuikScrp.For'       ! Used by FitUtil
+
+C Program 7.2: \Chapt-7\FitFunc7.For
+C Fitting functions for Chapter 7 examples.
+     Real Function PowerFunc(k, xx)
+     Integer k
+     Real    xx
+     Real    yy
+     Integer i
+       yy = 1
+        if (k .GT. 1 ) then
+          do 100 i= 2, k
+          yy = xx * yy
+  100     continue
+        endIf
+       PowerFunc = yy
+       Return
+     END
+
+     Real Function LegFunc(k, xx)
+C -Define separate terms in a series, y = a0*L0(x) + a1*L1(x) + ..
+C  Note k = 1 corresponds to zeroth order.
+C var   PAE : char    'P'-power series,
+C                     'A'-all Legendre terms to order m,
+C                     'E'-even Legendre terms}
+     Common /FitVars7/PAE
+     Character * 1 PAE
+     Integer k
+     Real    xx
+     Integer kk, i
+     Real  c, pi/3.14159/, LegPoly(11) ! i.e., 0th thru 10th order
+       if (PAE .EQ. 'E') kk = 2*k - 1
+       if (PAE .EQ.'A')  kk = k
+       c = cos(pi*xx/180)
+        LegPoly(1) = 1 ! for better efficiency, could calc once and save
+        if (kk .GT. 1 ) then
+          LegPoly(2) = c
+          if (kk .GT. 2 ) then
+            do 100 i = 3, kk
+              LegPoly(i)=((2*i-1)*c*LegPoly(i-1)-(i-1)*LegPoly(i-2))/i
+  100       continue
+         endIf        ! kk > 2
+       endIf          ! kk > 1
+        LegFunc = LegPoly(kk)
+       Return
+     END
+
+     Real Function Funct(k, xx)
+     Integer k
+     Real xx
+     Real LegFunc, PowerFunc
+     Common /FitVars7/PAE
+     Character * 1 PAE
+       if ((PAE .EQ. 'A') .OR. (PAE.EQ.'E')) Funct = LegFunc(k,xx)
+       if  (PAE .EQ. 'P')  Funct = PowerFunc(k,xx)
+       Return
+     END
+
+     Subroutine CalculateY
+     Integer  i, k
+     Real     yy, Funct
+     Include '\Chapt-6\FitVars.For'
+       do 100 i=1, nPts
+         yy = 0
+          do 200 k = 1, m
+          yy = yy + a(k) * Funct(k,x(i))
+  200     continue
+         yCalc(i) = yy
+  100   continue
+       Return
+     END
+
+     Real Function CalcChiSq() ! assumes array yCalc has been filled
+      integer i
+      real    chi2
+     Include '\Chapt-6\FitVars.For'
+        chi2=0.
+        do 100 i = 1, nPts
+         chi2 = chi2 + ( (y(i)-yCalc(i)) / sigY(i))**2
+  100   continue
+        CalcChiSq = chi2
+       Return
+     END
+
+C Program 7.3: \Chapt-7\MakeAB7.For
+C Routines to set up the beta and alpha matrices for linear regression
+C Uses  Matrix, FitFunc7
+C
+     Subroutine MakeBeta               ! Make the beta matrices
+     Integer  i, k
+     Real Funct
+     Include 'C:\Chapt-6\FitVars.For'
+       do 100  k=1, m
+          Beta(k)=0
+          do 200 i=1, nPts
+          Beta(k)=Beta(k) + y(i)*Funct(k, x(i))/sigY(i)**2
+  200     continue
+  100   continue
+       Return
+     End
+
+     Subroutine MakeAlpha              ! Make the alpha matrices
+     Integer i,j,k
+     Real Funct
+     Include 'C:\Chapt-6\FitVars.For'
+       do 100 j=1, m
+          do 200 k=1, m
+            Alpha(j,k)=0
+            do 300 i=1, nPts
+              Alpha(j,k) = Alpha(j,k)+Funct(j, x(i))
+     1                                *Funct(k, x(i))/sigY(i)**2
+  300       continue
+  200     continue
+  100   continue
+       Return
+     End
+
+C Program 7.4: \Chapt-7\Matrix.For
+C Invert a square matrix
+C Uses FitVars
+     Subroutine Matinv(m, mArray, Det)
+     Integer m
+     Real mArray(10,10), det
+     Integer ik(10), jk(10)
+     Integer i, j, k, L
+     Real aMax, save
+        Det=0
+C -find largest element
+        do 100  k = 1, m
+          aMax=0
+ 1500     do 200  i = k, m
+            do 3   S = k , m
+              if ( Abs(mArray(i,j)) .GT. Abs(aMax) )  then
+                aMax = mArray(i,j)
+                ik(k) = i
+                jk(k) = j
+              endif
+  300       continue  ! do j
+  200     continue  ! do i
+          if (aMax .EQ. 0 )  return  ! with 0 determinant as signal
+            Det = 1
+C -interchange rows and columns to put aMax in mArray(k,k)
+          i = ik(k)
+          if (i .LT. k ) then
+            goto 1500
+         elseif (i .GT. k )  then
+            do 400 j = 1, m
+              save = mArray(k,j)
+            mArray(k,j) = mArray(i,j)
+              mArray(i,j) = -save
+  400       continue                   !  do j
+         endif                        !  if i
+          j = jk(k)
+          if (j .LT. k ) then
+            goto 100
+         elseif (j .GT. k ) then
+            do 500 i = 1, m
+              save = mArray(i,k)
+            mArray(i,k) = mArray(i,j)
+              mArray(i,j) = -save
+  500       continue   ! do i
+          endIf   ! if j
+C -accumulate elements of inverse matrix
+          do 600 i = 1, m
+          if (i .NE. k )
+     1         mArray(i,k) = -mArray(i,k)/aMax
+  600     continue ! do i
+          do 700 i = 1, m
+            do 800 j = 1, m
+            if ((i .NE. k) .and. (j .NE. k) )
+     1           mArray(i,j) = mArray(i,j) + mArray(i,k)*mArray(k,j)
+  800       continue                   ! do j
+  700     continue                     ! do i
+         do 900 j = 1, m
+          if (j .NE. k )
+     1        mArray(k,j) = mArray(k,j)/aMax
+  900     continue                     ! do j
+          mArray(k,k) = 1/aMax
+          det = det * aMax
+  100     continue                     ! do k
+C -Restore ordering of matrix
+       do 1000 L = 1, m
+          k = m + 1 - L
+          j = ik(k)
+          if (j .GT. k ) then
+          do 1100 i = 1, m
+              save = mArray(i,k)
+            mArray(i,k) = -mArray(i,j)
+              mArray(i,j) = save
+ 1100       continue                   ! do i
+         endIf                        ! if j
+          i = jk(k)
+          if (i .GT. k ) then
+          do 1200 j = 1, m
+              save = mArray(k,j)
+            mArray(k,j) = -mArray(i,j)
+              mArray(i,j) = save
+ 1200       continue ! do j
+         endIf                        ! if i
+ 1000   continue                       ! do L
+       Return
+     END
+
+     Subroutine LinearBySquare(m, a, b, c)  ! matrix product
+     Integer m
+     Real a(10), b(10,10), c(10)
+     Integer  i,j
+        do 100 i = 1, m
+          c(i)=0
+          do 200 j = 1, m
+          c(i)=c(i) +a(j)*b(i,j)
+  200     continue
+  100   continue
+       Return
+     END
+
+     ------------------THERMCOU.DAT---------------
+ThermocoupleTest Data
+   21
+       0.0    -0.849      0.05
+       5.0    -0.738      0.05
+      10.0    -0.537      0.05
+      15.0    -0.i
+      0.05
+      20.0    -0.196      0.05
+      25.0    -0.019      0.05
+      30.0     0.262      0.05
+      35.0     0.413      0.05
+      40.0     0.734      0.05
+      45.0     0.882      0.05
+      50.0     1.258      0.05
+      55.0     1.305      0.05
+      60.0     1.541      0.05
+      65.0     1.768      0.05
+      70.0     1.935      0.05
+      75.0     2.147      0.05
+      80.0     2.456      0.05
+      85.0     2.676      0.05
+      90.0     2.994      0.05
+      95.0     3.200      0.05
+     100.0     3.318      0.05
+
+     ------------------LEGEANGL.DAT---------------
+Legendre Angular Distribution Test Data
+   17
+     0.000      1400         0
+    10.000      1386         0
+    20.000      1130         0
+    30.000      1045         0
+    40.000       971         0
+    50.000       862         0
+    60.000       819         0
+    70.000       808         0
+    80.000       862         0
+    90.000       829         0
+   100.000       824         0
+   110.000       839         0
+   120.000       819         0
+   130.000       901         0
+   140.000       925         0
+   150.000      1044         0
+   160.000      1224         0
+
+================================  CHAPTER 8 ================================
+C Program 8.0: \Chapt-8\NonLinFt.For
+C Main calling routine for non-linear fitting methods
+C Uses GridSear, GradSear, ExpndFit, MarqFit, FitFunc8, MakeAB8,
+C                                     NumDeriv, Matrix, FitUtil
+     Program NonLinFt
+     Integer  trial, j, method
+     Real stepDown, lambda, chiSqr, CalcChiSq
+     Character*40 title
+     Real stepScale(4)/0.49999, 0.99999, 0.001, 0.001/
+     Include '\Chapt-6\FitVars.For'
+       Print *,'     (1)Grid Search,     (2)Gradient Search'
+       Print *,'     (3)ChiSq expansion, (4)Function expansion'
+       Print *, 'Type 1, 2, 3, or 4  --- '
+       Read *, method
+        chiCut    = 0.01
+        stepDown  = 0.1                ! step down the gradient in Gradls
+        lambda    = 0.001              ! for Marquardt method only
+        stepSize  = stepScale(method)  ! scales deltaA(j)
+       Call FetchData('\Chapt-8\RadioDk.hst',title)
+       Call FetchParameters           ! uses nPts, must follow FetchData
+        trial     = 0
+       chiSqr    = CalcChisq()
+  100   continue
+          chiOld = chiSqr
+         Print 1000, trial, chiSqr
+ 1000     Format(' Trial #', I4, ' chiSq =', F10.1)
+         Print 1100, (a(j), j = 1,m)
+ 1100     Format(6F12.4)
+         Print *
+          goto (110, 120, 130, 140) , method
+  110       Call Gridls(chiSqr)
+          goto 151
+  120       Call Gradls(chiSqr, stepDown)
+          goto 150
+  130       Call ChiFit(chiSqr)
+          goto 150
+  140       Call Marquardt(chiSqr, chiCut, lambda)
+  150     trial = trial +1
+       if (abs(chiOld - chiSqr) .GE. chiCut)  goto 100
+  151   Call Calculae
+ 
+       if ((method .EQ. 1) .OR. (method .EQ. 2)) then
+          do 200 j = 1, m
+          SigA(j) = SigParab(j)  ! dChi2 = 1
+  200     continue
+         Call OutPut(.FALSE., 'CON' ,chiSqr, title) ! no error matrix
+       elseIf ((method .EQ. 3) .OR. (method .EQ. 4)) then
+         if (method .EQ.  4  ) then
+          Call Marquardt(chiSqr,chiCut,0)    ! get error matrix
+         endIf
+         do 300 j = 1, m
+          SigA(j) = SigMatrx(j) ! error matrix
+  300     continue
+         Call OutPut(.TRUE., 'CON', chiSqr, title) ! with error matrix
+       endIf
+       Call PlotIt('NonLin.SCR', .TRUE., .TRUE., ! scrpt file, Log?, Spline?
+     1              'C', (x(2)-x(1))/5,     ! data Circles, radius of circles
+     2               0., 1., 900., 1000.,   ! ranges-x1,y1,x2,y2
+     3               6, 6,                  ! num x-axis div, num y-axis div
+     4              'Time (sec)',  'Number of Counts')  ! axis labels
+       Call CloseGraphics
+     END
+
+C Sample fitting function for non-linear fits
+C Example is sum of 2 exponentials on a constant background
+     Real Function  ExpF(a,x)
+     Real a,x
+     Real yy, arg
+       arg = abs(x/a)
+       if (arg .GT. 60 ) then
+         yy = 0
+       else
+         yy = Exp(-arg)
+       endIf
+       ExpF = yy
+       Return
+     END
+
+     Function  yFunction(xx) ! real
+     Real yFunction, xx, ExpF
+     Include '\Chapt-6\FitVars.For'
+       Yfunction = a(1) + a(2)*ExpF(a(4),xx) + a(3)*ExpF(a(5),xx)
+       Return
+     END
+
+     Include '\Chapt-8\GridSear.For'      ! 1-Grid search method
+     Include '\Chapt-8\GradSear.For'      ! 2-Gradient search method
+     Include '\Chapt-8\ExpndFit.For'      ! 3-Function expansion method
+     Include '\Chapt-8\MarqFit.For'       ! 4-Marquardt method
+     Include '\Chapt-6\FitUtil.For'
+     Include '\Chapt-8\FitFunc8.For'      ! Used by all methods
+     Include '\Chapt-8\MakeAB8.For'       ! Used by methods 4 and 5
+     Include '\Chapt-8\NumDeriv.For'      ! Used by methods 4 and 5
+     Include '\Chapt-7\Matrix.For'        ! Used by methods 4 and 5
+     Include '\Chapt-6\GenUtil.For'       ! used by QuikScrp
+     Include '\Append-D\QuikScrp.For'     ! Used by FitUtil
+
+C  Program 8.1: \chapt-8\GRIDSEAR.FOR
+C Non-linear fit by the grid-search method
+C Uses FitFunc8, FitUtil
+     Subroutine Gridls(chiSqr)
+     Real chiSqr
+     Real CalcChiSq
+     Real save,delta, delta1,del1,del2,aa,bb,cc,disc,alph,x1,x2
+     Integer j
+     Include '\Chapt-6\FitVars.For'
+       chiSq2 = CalcChiSq()
+C  -find local minimum for each parameter-
+       do 100 j = 1, m
+         delta    = deltaA(j)
+          a(j)     = a(j) + delta
+         chiSq3   = CalcChiSq()
+          if (chiSq3 .GT. chiSq2 ) then
+          delta  = -delta                ! started in wrong direction
+          a(j)   =  a(j) + delta
+          save   =  chiSq2               (j) terchange 2 and 3 so 3 is lower
+          chiSq2 =  chiSq3
+            chiSq3 =  save
+          endIf
+C  -Increment or decrement a(j) until chi squared increases-
+  110     continue
+          chiSq1 = chiSq2                ! move back to prepare for quad fit
+            chiSq2 = chiSq3
+          a(j)   = a(j) + delta
+          chiSq3 = CalcChiSq()
+          if (chiSq3 .LE.  chiSq2) goto 110
+C  -Find minimum of parabola defined by last three points-
+         del1 = chiSq2 - chiSq1
+          del2 = chiSq3 - 2*chiSq2 + chiSq1
+          delta1 = delta * (del1/del2 + 1.5)
+          a(j) = a(j)  - delta1
+         chiSq2 = CalcChiSq()             ! at new local minimum
+C  -Adjust delta for change of 2 from chiSq at minimum-
+         aa = del2/2                      ! chiSq = aa*a(j)**2 + bb*a(j) + cc
+          bb = del1 - del2/2
+          cc = chiSq1-chiSq2
+         disc = bb**2 -4*aa*(cc-2)        ! chiSqr diff(erence) = 2
+         if (disc .GT. 0 ) then      ! if not, then probably not parabolic yet
+          disc =sqrt(disc)
+          alph = (-bb - disc)/(2*aa)
+          x1 = alph*delta +  a(1) - 2*delta   ! a(j) at chiSq minimum+2
+          disc = bb**2 - 4*aa*cc
+          if (disc.GT.0 ) then
+            disc = sqrt(disc)
+          else
+            disc = 0 ! elim rounding err
+          endIf
+          alph = (-bb - disc)/(2*aa)
+          x2 = alph*delta + a(1) - 2*delta    ! a(j) at chiSq minimum
+            delta = x1 - x2
+            deltaA(j) = delta
+         endIf
+  100   continue                                ! do j
+        chiSqr = chiSq2
+       Return
+     END
+
+C Program 8.2: \Chapt-8\GRADSEAR.FOR
+C Non-linear least-squares fit by gradient search method
+C Uses FitFunc8, FitUtil
+     Subroutine CalcGrad
+     Integer j
+     Real   sum, deltA, fract/0.001/, CalcChiSq
+     Include '\Chapt-6\FitVars.For'
+       sum = 0
+        do 100 j = 1, m
+         chiSq2 = CalcChiSq()
+         deltA  = fract * deltaA(j) ! diff(erential element for gradent
+         a(j)    = a(j) + deltA
+         chiSq1  = CalcChiSq()
+         a(j)    = a(j) - deltA
+         grad(j) = chiSq2 - ChiSq1                  ! 2*deltA*grad
+         sum     = sum + grad(j)**2
+  100   continue
+       do 200  j = 1, m
+         grad(j) =  deltaA(j)*grad(j)/sqrt(sum)     ! step * grad
+  200   continue
+       Return
+     End
+
+     Subroutine Gradls(chiSqr, stepDown)
+     Real chiSqr, stepDown
+     Real stepSum, step1, CalcChiSq
+     Integer j
+     Include '\Chapt-6\FitVars.For'
+       Call CalcGrad   ! calculate the gradient
+C -Evaluate chiSqr at new point and make sure chiSqr decreases-
+   10   continue
+         do 100 j = 1, m
+          a(j) = a(j) + stepDown * grad(j) ! slide down
+  100     continue
+         chiSq3 = CalcChiSq()
+         if (chiSq3 .GE. chiSq2 ) then
+          do 200 j = 1, m      !  must have overshot minimum
+            a(j) = a(j) - stepDown * grad(j) ! restore
+  200       continue
+            stepDown = stepDown/2              ! decrease stepSize
+         endIf
+       if (chiSq3 .GT. chiSq2) goto 10
+        stepSum = 0
+C -Increment parameters until chiSqr starts to increase-
+  110   continue
+         stepSum = stepSum + stepDown   ! counts total increment
+          chiSq1 = chiSq2
+          chiSq2 = chiSq3
+         do 300 j = 1, m
+          a(j) = a(j) + stepDown * grad(j)
+  300     continue
+         chiSq3 = CalcChiSq()
+        if (chiSq3 .LE. chiSq2) goto 110
+C -Find minimum of parabola defined by last three points-
+        step1=stepDown*((chiSq3-chiSq2)/(chiSq1-2*chiSq2+chiSq3)+0.5)
+       do 400 j = 1, m
+         a(j) = a(j) - step1 * grad(j)    ! move to minimum
+  400   continue
+       chiSqr = CalcChiSq()
+        stepDown = stepSum                 ! start with this next time
+       Return
+     END
+
+C Program 8.3: \Chapt-8\EXPNDFIT.FOR
+C Non-linear Least-squares fit by expansion of the fitting function
+C Uses  FitFunc8, MakeAB8, Matrix
+     Subroutine ChiFit(chiSqr)
+     Integer j
+     Real det, CalcChiSq
+     Include '\Chapt-6\FitVars.For'
+       Call MakeBeta
+       Call MakeAlpha
+       Call MatInv(m, alpha, det)            ! Invert matrix
+       Call LinearBySquare(m,Beta,Alpha,dA)  ! Evalulate parameter increments
+       do 100  j = 1, m
+         a(j) = a(j) + dA(j)                 ! Increment to next solution.
+  100   continue
+       Print *,'a',(a(j),j=1,m)
+       chiSqr =  CalcChiSq()
+       Return
+     END
+
+C Program 8.4: \Chapt-8\MarqFit.For
+C Non-linear fit by the gradient-expansion (Marquardt) method
+C Uses  FitFunc9, MakeAB8, Matrix
+     Subroutine Marquardt(chiSqr, xiCut, lambda)
+     Integer j
+     Real chiSqr, xiCut, lambda
+     Real det, CalcChiSq
+     Include '\Chapt-6\FitVars.For'
+   10   continue
+       Call MakeBeta
+       Call MakeAlpha
+       do 100 j = 1, m
+         alpha(j,j) = (1 + lambda) * alpha(j,j)
+  100   continue
+       Call MatInv(m, alpha, det)  ! Invert matrix
+       if (lambda .GT. 0 ) then ! Final call to get the error matrix.
+         Call LinearBySquare(m,Beta,Alpha,dA) ! Evaluate parameter increments
+         chiSq1 = chiSqr
+         do 200 j = 1, m
+          a(j) = a(j) + dA(j) ! Incr to next solution
+  200     continue
+         chiSqr = CalcChiSq()
+         if ( chiSqr .GT. chiSq1 + xiCut ) then
+          do 300 j = 1, m
+            a(j) = a(j)-dA(j) ! Return to prev solution
+  300       continue
+          chiSqr = CalcChiSq()
+          lambda = 10*lambda  ! and repeat the calc, with larger lambda
+       goto 10
+         endIf   ! chiSqr
+         lambda = 0.1 * lambda
+       endIf     ! lambda
+       Return
+     END
+
+C Program 8.5:  \Chapt-8\FITFUNC8.FOR
+C Uses FitVars
+C -The following routines are general for fitting any function-
+     Subroutine CalculateY
+     Real Yfunction
+     Include '\Chapt-6\FitVars.For'
+       do 100 i = 1, nPts
+          yCalc(i) = Yfunction(x(i))
+  100   continue
+       Return
+     END
+
+     Real Function CalcChiSq()
+     Real  chi2, Yfunction
+     Include '\Chapt-6\FitVars.For'
+       chi2=0.
+       do 100 i = 1, nPts
+         chi2 = chi2 + ( (y(i)-Yfunction(x(i)))/sigY(i))**2
+  100   continue
+        CalcChiSq = chi2
+       Return
+     END
+
+C -Standard deviation calc'd from chiSq change of 1 (parabola fit)
+     Real Function  SigParab(j)
+     Integer j
+     Real CalcChiSq
+     Include '\Chapt-6\FitVars.For'
+       chiSq2 = CalcChiSq()
+        a(j)   = a(j) + deltaA(j)
+       chiSq3 = CalcChiSq()
+        a(j)   = a(j) - 2*deltaA(j)
+       chiSq1 = CalcChiSq()
+        a(j)   = a(j) + deltaA(j)
+        SigParab = deltaA(j)*sqrt(2/(chiSq1-2*chiSq2+chiSq3))
+       Return
+     END
+
+C -Standard deviation calc'd from diagonal terms in error matrix
+     Real Function SigMatrx(j)
+     Integer j
+     Real sig
+     Include '\Chapt-6\FitVars.For'
+       sig = sqrt(abs(alpha(j,j)))
+        if (alpha(j,j) .LT. 0 ) sig = - sig  ! note- an error
+        SigMatrx = sig
+       Return
+     END
+
+
+C Program 8.6: \Chapt-8\MakeAB8.For
+C Matrix set-up for non-linear fits
+C Uses Fitfunc9, NumDeriv
+C
+     Subroutine MakeBeta       ! Make beta matrices for non-linear fitting
+     Integer  j
+     Include 'C:\Chapt-6\FitVars.For'
+       do 100 j = 1, m
+          beta(j) = -0.5*dXiSq_da(j)
+100     continue
+       Return
+     END
+
+     Subroutine MakeAlpha  ! Make alpha matrices for non-linear fitting
+     Integer  j, k
+     Include 'C:\Chapt-6\FitVars.For'
+       do 100 j = 1, m
+          alpha(j,j) =  0.5 * d2XiSq_da2(j)
+          if (alpha(j,j) .EQ. 0 ) then
+          Print *, 'Diagonal element is zero, j =',j
+          Stop
+          endIf
+          if (j .GT. 1 ) then
+            do 200 k = 1, j-1
+              alpha(j,k) =  0.5*d2XiSq_dajk(j,k)
+              alpha(k,j) =  alpha(j,k)
+  200       continue   ! do k
+         endIf        ! if  j
+  100   continue       !  do j
+        do 300 j = 1, m
+          if (alpha(j,j) .LT. 0 ) then
+          alpha(j,j) = -alpha(j,j)
+          if (j .GT. 1 ) then
+              do 400 k = 1, j-1
+                alpha(j,k) = 0
+                alpha(k,j) = 0
+  400         continue ! do k
+          endIf      ! if j
+         endIf        ! if alpha
+  300   continue       ! for j
+       Return
+     END
+
+C Program 8.7: \Chapt-8\NUMDERIV.FOR
+C Numerical derivatives for non-linear fits
+C Can be replaced by analytic derivatives, if they can be calculated.
+C However, numerical calculation is general, and convenient.
+C Uses FitFunc8
+     Real Function dXiSq_da(j)
+     Integer j
+     Common/numderiv/ xiSq0         !must be preserved for reuse
+     Real    CalcChiSq, xiSqPlus, xi00   tem
+     Include '\Chapt-6\FitVars.For'
+       if (j.EQ.1 )  xiSq0 = CalcChiSq()  !  starting point-calculate it once
+        a(j)        =  a(j) + deltaA(j)
+       xiSqPlus    =  CalcChiSq()
+       a(j)        =  a(j) - deltaA(j)    ! restore
+       tem         =  (xiSqPlus - xiSq0)/(deltaA(j))
+       dXiSq_da    =  tem
+       Return
+     END
+
+     Real Function d2XiSq_da2(j)
+     Integer j
+     Integer i
+     Real    yFunction, tem
+     Include '\Chapt-6\FitVars.For'
+       if (j .EQ. 1 ) then
+         do 100 i = 1, nPts
+          y0(i) = yFunction(x(i))       ! starting point-calculate it once
+  100     continue
+       endIf
+        a(j) = a(j) + deltaA(j)
+        tem = 0
+       do 200 i = 1, nPts
+         dYda(i,j) = (yFunction(x(i)) - y0(i))/deltaA(j)/sigY(i)
+         tem = tem + (dYda(i,j))**2
+  200   continue
+        a(j) = a(j) - deltaA(j)
+       d2XiSq_da2 = 2*tem
+       Return
+     END
+
+     Real Function d2XiSq_dajk(j,k)
+     Integer j,k
+     Real tem
+     Integer i
+     Include '\Chapt-6\FitVars.For'
+       tem = 0
+        do 300 i = 1, nPts
+          tem = tem + dYda(i,j)*dYda(i,k)
+  300   continue
+        d2XiSq_dajk = 2*tem
+       Return
+     END
+     ---------------------RADIODK.HST---------------------
+Radioactive decay
+    59
+    15   775   27.8
+    30   479   21.9
+    45   380   19.5
+    60   302   17.4
+    75   185   13.6
+    90   157   12.5
+   105   137   11.7
+   120   119   10.9
+   135   110   10.5
+   150    89    9.4
+   165    74    8.6
+   180    61    7.8
+   195    66    8.1
+   210    68    8.2
+   225    48    6.9
+   240    54    7.3
+   255    51    7.1
+   270    46    6.8
+   285    55    7.4
+   300    29    5.4
+   315    28    5.3
+   330    37    6.1
+   345    49    7.0
+   360    26    5.1
+   375    35    5.9
+   390    29    5.4
+   405    31    5.6
+   420    24    4.9
+   435    25    5.0
+   450    35    5.9
+   465    24    4.9
+   480    30    5.5
+   495    26    5.1
+   510    28    5.3
+   525    21    4.6
+   540    18    4.2
+   555    20    4.5
+   570    27    5.2
+   585    17    4.1
+   600    17    4.1
+   615    14    3.7
+   630    17    4.1
+   645    24    4.9
+   660    11    3.3
+   675    22    4.7
+   690    17    4.1
+   705    12    3.5
+   720    10    3.2
+   735    13    3.6
+   750    16    4.0
+   765     9    3.0
+   780     9    3.0
+   795    14    3.7
+   810    21    4.6
+   825    17    4.1
+   840    13    3.6
+   855    12    3.5
+   870    18    4.2
+   885    10    3.2
+
+
+
+
+
+
+
+
+
+
+================================  CHAPTER 9 ================================
+C Program 9.1: \Chapt-9\LorenFit.For
+C Main calling routine for fit to Lorentzian + polynomial
+C Uses  FitFunc8, MarqFit, Matrix,  NumDeriv, MakeAB8,  FitUtil,
+C                                      QuikPlot, GenUtil
+     Program LorenFit
+     Character*40  title
+     Integer trial, j
+     Real   xShift, chiSqr, lambda, YFunction
+     Real  stepScale(4)/ 0.49999, 0.99999, 0.001, 0.001/
+     Include 'C:\Chapt-6\FitVars.for'
+        chiCut    = 0.01
+       lambda    = 0.001             ! for Marquardt method only
+       stepSize  = stepScale(4)      ! scales deltaA[j]
+       Call FetchData('\Chapt-9\Single.Hst',title)
+       xShift = (x(2)- x(1))/2
+        do 100 j = 1, nPts
+          x(j) = x(j) + xShift        ! move to bin center
+  100   continue
+       Call FetchParameters          ! uses nPts, must follow FetchData
+        trial     = 0
+       chiSqr    = CalcChisq()
+  200   continue
+          chiOld = chiSqr
+         Print *,'Trial #',trial,' chiSq = ',chiSqr
+         Print *, (a(j), j = 1, m)
+         Call Marquardt(chiSqr, chiCut, lambda)
+         trial  = 1 + trial
+        if (abs(chiOld - chiSqr) .GT. chiCut) goto 200
+       Call CalculateY
+       Call Marquardt(chiSqr,chiCut,0)          ! get error matrix
+        do 300 j = 1, m
+         SigA(j) = SigMatrx(j)                  ! error matrix
+  300   continue
+       Call OutPut(.TRUE., 'CON', chiSqr,title) ! with error matrix
+        do 400 j = 1, nPts
+         x(j) = x(j) - xShift                   ! restore to left edge
+  400   continue
+       Call PlotIt('LorenFit.SCR',.FALSE.,.TRUE.,! Script file, Log?, Spline?
+     1         'H', 0.0,                          ! Hist, 0(not used)
+     2          0.0, 0.0, 3.0, 90.0,              ! x1, y1, x2, y2 for plot
+     3          6, 6,                             ! num grid marks x,y
+     4         'E (GeV)', 'Number of Counts')     ! labels
+C -Plot the background-
+       a(4) = 0.0
+       a(7) = 0.0
+        do 500 j = 1, nPts
+         yCalc(j) = YFunction(x(j))
+  500   continue
+       Call SplineMake(nPts,0,0,x,yCalc)
+       Call Scurve(1, 40, 5, 0.025, x)    ! spline curve
+       Call CloseGraphics
+     END
+
+C Lorentzian peak on a quadratic background
+     Real Function yFunction(xx) ! Lorentzian on polynomial
+     Real xx
+     Real yy, pi/3.1415927/
+     Include '\Chapt-6\FitVars.For'
+       yy = a(1) + a(2)*xx + a(3)*xx**2 +
+     1                   a(4)*a(6)/(2*pi)/((xx-a(5))**2 + a(6)**2/4)
+       yFunction = yy
+       Return
+     END
+
+     Include '\Chapt-6\FitUtil.For'
+     Include '\Chapt-8\FitFunc8.Fc8.F
+     Include '\Chapt-8\MarqFit.For'       ! Marquardt method
+     Include '\Chapt-8\MakeAB8.For'       ! Used by MarqFit
+     Include '\Chapt-8\NumDeriv.For'      ! Used by MarqFit
+     Include '\Chapt-7\Matrix.For'        ! Used by MarqFit
+     Include '\Chapt-6\GenUtil.For'       ! used by MarqFit
+     Include '\Append-D\QuikScrp.For'     ! Used by FitUtil
+
+----------------------Single.Hst-----------------------
+
+ Hist # 1 Poly-Lorentz (Below=    0 In= 2000 Above=    0) Mean=   1.561 StDev=   0.728 Err=    0.016
+    60
+  0.0000     6 0 ~~~
+  0.0500     1 0 1
+  0.1000    10 0 ~~~~~
+  0.1500    12 0 ~~~~~~
+  0.2000     6 0 ~~~
+  0.2500    13 0 ~~~~~~1
+  0.3000    23 0 ~~~~~~~~~~~1
+  0.3500    22 0 ~~~~~~~~~~~
+  0.4000    15 0 ~~~~~~~1
+  0.4500    21 0 ~~~~~~~~~~1
+  0.5000    23 0 ~~~~~~~~~~~1
+  0.5500    26 0 ~~~~~~~~~~~~~
+  0.6000    36 0 ~~~~~~~~~~~~~~~~~~
+  0.6500    25 0 ~~~~~~~~~~~~1
+  0.7000    27 0 ~~~~~~~~~~~~~1
+  0.7500    35 0 ~~~~~~~~~~~~~~~~~1
+  0.8000    40 0 ~~~~~~~~~~~~~~~~~~~~
+  0.8500    44 0 ~~~~~~~~~~~~~~~~~~~~~~
+  0.9000    66 0 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  0.9500    81 0 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~1
+  1.0000    75 0 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~1
+  1.0500    57 0 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~1
+  1.1000    48 0 ~~~~~~~~~~~~~~~~~~~~~~~~
+  1.1500    45 0 ~~~~~~~~~~~~~~~~~~~~~~1
+  1.2000    46 0 ~~~~~~~~~~~~~~~~~~~~~~~
+  1.2500    41 0 ~~~~~~~~~~~~~~~~~~~~1
+  1.3000    35 0 ~~~~~~~~~~~~~~~~~1
+  1.3500    36 0 ~~~~~~~~~~~~~~~~~~
+  1.4000    53 0 ~~~~~~~~~~~~~~~~~~~~~~~~~~1
+  1.4500    32 0 ~~~~~~~~~~~~~~~~
+  1.5000    40 0 ~~~~~~~~~~~~~~~~~~~~
+  1.5500    37 0 ~~~~~~~~~~~~~~~~~~1 
+  1.6000    38 0 ~~~~~~~~~~~~~~~~~~~ 
+  1.6500    31 0 ~~~~~~~~~~~~~~~1 
+  1.7000    36 0 ~~~~~~~~~~~~~~~~~~ 
+  1.7500    44 0 ~~~~~~~~~~~~~~~~~~~~~~ 
+  1.8000    42 0 ~~~~~~~~~~~~~~~~~~~~~ 
+  1.8500    37 0 ~~~~~~~~~~~~~~~~~~1 
+  1.9000    32 0 ~~~~~~~~~~~~~~~~ 
+  1.9500    32 0 ~~~~~~~~~~~~~~~~ 
+  2.0000    43 0 ~~~~~~~~~~~~~~~~~~~~~1 
+  2.0500    44 0 ~~~~~~~~~~~~~~~~~~~~~~ 
+  2.1000    35 0 ~~~~~~~~~~~~~~~~~1 
+  2.1500    33 0 ~~~~~~~~~~~~~~~~1 
+  2.2000    33 0 ~~~~~~~~~~~~~~~~1 
+  2.2500    39 0 ~~~~~~~~~~~~~~~~~~~1 
+  2.3000    29 0 ~~~~~~~~~~~~~~1 
+  2.3500    41 0 ~~~~~~~~~~~~~~~~~~~~1 
+  2.4000    32 0 ~~~~~~~~~~~~~~~~ 
+  2.4500    44 0 ~~~~~~~~~~~~~~~~~~~~~~ 
+  2.5000    26 0 ~~~~~~~~~~~~~ 
+  2.5500    39 0 ~~~~~~~~~~~~~~~~~~~1
+  2.6000    29 0 ~~~~~~~~~~~~~~1 
+  2.6500    35 0 ~~~~~~~~~~~~~~~~~1 
+  2.7000    32 0 ~~~~~~~~~~~~~~~~ 
+  2.7500    21 0 ~~~~~~~~~~1 
+  2.8000    21 0 ~~~~~~~~~~1 
+  2.8500    15 0 ~~~~~~~1 
+  2.9000    25 0 ~~~~~~~~~~~~1 
+  2.9500    15 0 ~~~~~~~1 
+
+================================  CHAPTER 10 ================================
+C Program 10.1: \Chapt-10\MaxLike.For
+C Direct maximum likelihood example
+C  Uses Fitutil, GenUtil, QuikScrpcrp  Program MaxLike
+     Real     sigTau, tauMax, maxM  ! M is log of likelihood function
+     Include '\Chapt-10\MaxlIncl.For'
+       Call Startup
+       Call GetData('\Chapt-10\Da50.Dat')
+       Call Search(tauMax, maxM)
+       Call WriteOutPut(sigTau, tauMax, maxM)
+       Call PlotLikeCurve(tauMax, sigTau, maxM)
+       Call CloseGraphics
+     END
+
+     Subroutine StartUp
+     Include '\Chapt-10\MaxlIncl.For'
+       c         = 3.00       ! velocity of light
+       loSearch  = 0.94
+       hiSearch  = 1.5
+       tauStep   = 0.01       ! range and step
+       xLo       = 0.2
+       xhi       = 2.2        ! X plot range
+       yLo       = 0.0
+       yHi       = 1.2        ! Y plot range
+       nTrials   =  (hiSearch - loSearch)/tauStep
+     Return
+     END
+
+     Subroutine GetData(inFile)
+     Integer   j
+     Character*(*) inFile
+     Character*40 title
+     Include '\Chapt-10\MaxlIncl.For'
+       Open(5, inFile)        ! input data file
+       Read(5, *) title
+       Print *,title
+       Read(5, *) nEvents, mass, d1, d2
+       do 100  j = 1, nEvents
+         Read(5, *) xProduction(j), pLab, xDecay(j)
+         LtoTscale(j) =  mass/(c*pLab)             ! this is 1/(c*beta*gamma)
+         times(j) =  (xDecay(j) - xProduction(j))*LtoTscale(j) ! proper time
+  100   continue
+       Print *, 'End of File - ', nEvents, ' events read'
+       Return
+     END
+
+     Real Function LogProb(k, tau)
+     Integer k
+     Real tau
+     Real loTlim, hiTlim, a, b
+     Include '\Chapt-10\MaxlIncl.For'
+C -d1 and d2 are beginning and end of the fiducial region.
+C -Must cvt to loTlim and hiTlim which are integration limits in proper time,
+C -measured from prod vertex.
+       loTlim = (d1 - xProduction(k)) * LtoTscale(k)
+       hiTlim = (d2 - xProduction(k)) * LtoTscale(k)
+C -Now, calc probability-
+       if (hiTlim .GT. 50 ) then
+         b = 0
+       else
+          b = exp(-hiTlim/tau)
+       endIf
+       a = exp(-loTlim/tau)
+C -prob = exp(-times(k)/tau)/   (tau*(a - b))
+       LogProb  = -times(k)/tau - aLog(tau*(a - b))  ! log likelihood
+       Return
+     END
+
+     Real Function LogLike(t)
+     Real t, LogProb
+     Integer  i
+     Real     M, prob
+     Include '\Chapt-10\MaxlIncl.For'
+       M = 0.0
+       do 100 i = 1, nEvents
+         prob = LogProb(i,t)
+         M = prob + M
+  100   continue
+       LogLike = M
+       Return
+     END
+
+     Subroutine Search(tauAtMax, maxM)
+     Real tauAtMax, maxM
+     Integer  trial
+     Real M1, M2, M3, del1, del2, delta1, tau, mLikeLi, LogLike
+     Include '\Chapt-10\MaxlIncl.For'
+       M2    =  -1000
+        maxM  =  -1.0e20
+        tau   =   loSearch
+       do 100 trial = 0, nTrials
+         mLikeLi = LogLike(tau)
+         Print *,'trial',trial,' tau=', tau,' Log Likelihood=',mLikeLi
+         M3 = mLikeLi
+         if (M3 .GT. M2 )  then   ! Remember, thesthese negative
+          M1 = M2
+          M2 = M3
+          else                    ! leaving maximum
+C  Find maximum of parabola defined by last three points-
+            del1     = M2 - M1
+            del2     = M3 - 2*M2 + M1
+          delta1   = tauStep * (del1/del2 + 1.5)
+            tau      = tau  - delta1
+            tauAtMax = tau
+            maxM     = LogLike(tau)    ! at  maximum of parabola
+          Return
+          endIf
+          tau = tau + tauStep
+  100   continue
+       Return
+     END
+
+     Real Function Error(t, dt) ! 1/sqrt(-2nd derivative of log(L))
+     Real t, dt
+     Real  t1, t2, d2Ydt2, err, LogLike
+        t1 = t - dt
+        t2 = t + dt
+        d2Ydt2 = (LogLike(t2) - 2*LogLike(t) + LogLike(t1))/dt**2
+       err    = 1/sqrt(-d2Ydt2)
+        Error  = err
+       Return
+     END
+
+     Subroutine WriteOutPut(dTau, tauAtMax, maxM)
+     Real  dTau, tauAtMax, maxM, Error
+     Include '\Chapt-10\MaxlIncl.For'
+       dTau = Error(tauAtMax, tauStep)
+       Print *, 'n-events=', nEvents,',      max log likelihood=',maxM
+       Print *, 'tau at max =',tauAtMax, ' +-', dtau
+       Return
+     END
+
+     Subroutine PlotLikeCurve(tau, dtau, maxM)  ! M vs tau +- nSig st devs
+     Real tau, dtau, maxM, LogLike
+     Integer  i
+     Real     t, dt, L
+     Include '\Chapt-10\MaxlIncl.For'
+     Include '\Chapt-6\FitVars.For'
+       Print *, 'Calculating Likelihood Function for Plot'
+       Print *
+C -plot data points-
+        nPts = 21
+        dt = (xHi - xLo)/(nPts-1)
+        t = xLo
+        i = 1
+        do 100 i = 1, nPts
+          x(i)    = t
+          sigY(i) = 0.02                  ! dy for plot - not an uncertainty
+          L       = LogLike(t) - maxM     ! so L = 0 at max log of likelihood
+          if (L .LT. -50 ) then
+            y(i) = 0
+          else
+            y(i) = exp(L)   ! L = relative likelihood function
+          endIf
+         t = t + dt
+         Print 1000
+ 1000     Format('&#')
+  100   continue
+C    ------ now calc Gaussian ------
+        nPts = i-1
+        do 200 i = 1, nPts
+         yCalc(i) = exp(-0.5* ((tau-x(i))/dTau)**2)
+  200   continue
+       Call PlotIt('MaxLike.Scr',.FALSE. , .TRUE., !script file, Log? Spline?
+     1              'C', dt/10,               ! Data circles, Radius of circles
+     2               xLo, yLo, xHi, yHi,      ! plot ranges
+     2                5, 6,                   ! num x-axis, y-axis div
+     3              'Mean life (tau) ',  'Relative Likelihood')! axes labels
+       Return
+     END
+     Include '\Chapt-6\FitUtil.For'
+     Include '\Chapt-6\GenUtil.For'         ! Used by QuikScrp
+     Include '\Append-D\QuikScrp.For'       ! Used by FitUtil
+
+C Program 10.2 \Chapt-10\MaxLIncl.for
+C Include file for MaxLike
+     Parameter(maxEvents = 2000)            !max number of events
+     Real  c
+C -Set or used in StartUprtUp----------
+     Integer nTrials
+     Real loSearch, hiSearch, tauStep       ! search range and step
+     Real xLo, xhi, yLo, yHi                ! plotting range
+C -Input data from file -------------See Fig 10.1--
+C -for d1 and d2, the short and long fiducial volume cutoffs
+C -xProduction and xDecay correspond to vertices V1 and V2.
+C ---------------------------------------------------------------------
+     Integer nEvents
+     Real mass, d1, d2, pLab
+     Real xProduction(maxEvents), xDecay(maxEvents)
+C -Data arrays for search -------------
+     Real times(maxEvents), LtoTscale(maxEvents)
+C ---------------------------------------------------------------------
+     Common/MaxlIncl/
+     1 nTrials,nEvents,
+     2 loSearch, hiSearch, tauStep, xLo, xHi, yLo, yHi,
+     3 mass, d1, d2, pLab,
+     4 xProduction, xDecay, times, LtoTscale,
+     5 c                                           ! vel of light
+
+     --------------------- DA50.Dat --------------------
+ Test data for MaxLike
+ 50  497.671    10.000    40.000 ! num events, K-mass, lowcut=d1, hicut=d2
+     5.71   1994.10     13.26   ! prod vtx, momentum (MeV/c), decay vtx
+      4.95   1977.71     15.67
+      4.48   2118.97     27.19
+      5.30   2129.02     20.27
+      5.42   1892.89     14.14
+      5.69   2135.65     20.94
+      4.99   2197.46     20.23
+      6.06   1857.77     14.56
+      5.07   1948.80     14.60
+      5.49   1937.91     32.52
+      5.53   2068.74     34.82
+      4.90   2030.53     24.05
+      5.41   2008.16     21.48
+      4.91   2179.98     16.16
+      5.20   2035.34     14.76
+      5.33   2092.14     11.80
+      3.06   2080.76     13.10
+      5.15   2005.34     20.19
+      4.82   2063.12     16.20
+      5.02   2139.63     38.86
+      5.54   2020.03     15.40
+      5.50   2165.10     19.19
+      5.17   2064.12     20.60
+      3.86   1826.74     39.94
+      3.80   1988.16     18.41
+      4.89   1775.70     24.71
+      5.53   2076.64     36.46
+      4.88   2007.47     21.58
+      5.22   1993.46     19.45
+      5.13   1914.97     17.43
+      4.86   2052.36     13.47
+      5.79   2026.81     11.21
+      4.97   1974.63     19.92
+      4.88   1987.38     19.92
+      4.39   1930.54     16.43
+      5.24   1850.88     15.03
+      5.52   2082.63     14.99
+      4.43   1946.98     16.09
+      5.72   2095.30     14.37
+      4.64   1847.71     15.17
+      4.83   1924.33     14.29
+      4.59   1923.84     13.66
+      4.66   1915.47     16.68
+      4.99   2030.41     28.18
+      4.72   2054.99     12.10
+      5.28   2115.78     10.38
+      4.18   1902.80     30.15
+      4.49   1947.17     18.43
+      5.42   1808.47     10.38
+      4.62   2071.77     14.59
+      -1.0
+================================  CHAPTER 11 ================================
+C Program 11.1: \Chapt-11\Chi2Prob.For
+C Calculate the chi-square probability integral
+C Use30.1tUtil
+      Program Chi2Prob
+     Real chi2,  ChiProb
+     Integer nFree
+       Print *,'Test Integral of Chi2 probability density function'
+  100   Print *, 'Type  num deg of freedom, Chi2  '
+       Read *, nFree, Chi2
+       Print *,  ' Chi**2 Probability=', ChiProb(nFree, chi2)
+       goto 100
+     END
+     Include 'C:\Chapt-6\FitUtil.For'
+     Include 'C:\Chapt-6\GenUtil.For'  ! Used by FitUtil
+     Include 'C:\Append-D\QuikScrp.For'! Not used but references in FitUtil
+
+C Program 11.2: \Chapt-11\LcorProb.For
+C Calculate linear correlation probability integral
+C Uses LcorLate
+     Program LcorProb
+     Integer nObserv
+     Real LinCorProb, rCorr
+        Print *, 'Test Integral of Linear Correlation Function'
+    1   Print *, 'Type-# observations, linear correlation coefficient: '
+        Read *, nObserv, rCorr
+       Print *, 'Integral Correlation Function= ',
+     1                   LinCorProb(nObserv-2, rCorr)
+        goto 1
+      END
+     Include '\Chapt-11\LCorLate.For'
+     Include '\Chapt-6\FitUtil.For'     ! Used by LcorLate
+     Include '\Chapt-6\GenUtil.For'     ! Used by FitUtil
+     Include '\Append-D\QuikScrp.For'   ! Not used but references in FitUtil
+
+C Program 11.3: \Chapt-11\LCorrlate.For
+C Linear-correlation probability function and integral
+C Uses FitUtil, GenUtil
+     Real Function LinCorProb(nFree, hiLim)
+     External LinCorrel     ! for use in Function Simpson
+      Integer nFree
+     Real    hiLim
+     Real dx /0.01/, loLim/0.0/, LinCorrel, Simpson
+      Integer  nInt
+      Common/Util/glSimps
+       glSimps = nFree ! global for Function LinCorrel when called by Simpson
+       nInt   = Int((hiLim - loLim)/dx)
+       LinCorProb = 1-2*Simpson(LinCorrel, nInt, loLim,  hiLim)
+       Return
+     END
+
+     Real Function LinCorrel(r)
+      Real r
+     Common/Util/glSimps        ! glSims = nFree must be global for
+     Data sqrtPi/1.7724539/     ! Function "Simpsons" which allows only 1 arg
+        LinCorrel = Gamma((glSimps+1)/2)/Gamma(glSimps/2)
+     1            *exp( (glSimps-2)/2 * aLog(1 - r**2))/sqrtPi
+       Return
+     END
+
+================================  APPENDIX A ================================
+C Program A.1: \Append-A\SplinTst.For
+C Test Cubic Spline Interpolation
+C Uses Splines
+     Program SplinTst
+     Character title(80)
+     Real d2a, d2b, xs, x(100), y(100), SplineInt
+     Integer n, i
+     Open(5,'\Append-A\Spline.Dat')      !test data file
+     Read(5,1000) title
+     Print 1000, ' ',title
+ 1000 Format(80A1)
+     Read(5,*) n, d2a, d2b !no. of points, 2nd derivatives at boundary
+     Print *,'Data Table: n=', n
+     Print *,'     X                Y'
+     do 100 i = 1, n
+       Read(5,*) x(i), y(i)
+       Print *, x(i), y(i)
+  100 continue
+     Call SplineMake(n, d2a, d2b, x, y)
+  200 Print *,'Type a value of X  '
+     Read *, xs
+     Print *, 'Interpolated y = ', SplineInt(xs)
+     goto 200
+     END
+     Include '\APPEND-A\Splines.For'
+
+
+C Program A.2: \Append-A\Splines.For
+C Routines for cubic spline interpolation.
+C Constant intervals in the independent variable are assumed.
+     Subroutine SplineMake(nn, d2ydx2A, d2ydx2B, xIn, yIn)
+     Integer nn
+     Real    d2ydx2A, d2ydx2B, xIn(100), yIn(100)
+C -Common variables set in SplineMake, used in SplineInt-
+     Common/Splines/n, h, xx(100), yy(100), d2ydx2(100)
+     Integer n
+     Real h, xx, yy, d2ydx2
+     Integer i
+     Real  a(100), delt1(100), delt2(100), b(100)
+       n = nn         ! Makes n available to subroutine SplineInt     ????
+       h = (xIn(n) - xIn(1))/(n-1)
+       do 100 i = 1, n
+         xx(i) = xIn(i)
+         yy(i) = yIn(i)
+  100   continue
+       d2ydx2(1) = d2ydx2A ! end values of 2nd derivatives provided on input
+        d2ydx2(n) = d2ydx2B
+        a(2) = 4
+       do 200 i =  3, n-1
+         a(i) = 4-1/a(i-1)              ! coefficients
+  200   continue
+       do 300 i = 2, n
+         delt1(i) = yIn(i) - yIn(i-1)   ! 1st differences
+  300   continue
+       do 400 i = 2, n-1                ! 2nd differences x 6
+         delt2(i) = 6*(delt1(i+1) - delt1(i))/(h*h)
+  400   continue
+       b(2) = delt2(2) - d2ydx2(1)      ! b coefficients
+       do 500 i= 3, n-1
+         b(i) = delt2(i) - b(i-1)/a(i-1)
+  500   continue
+       b(n-1) = b(n-1) - d2ydx2(n)
+       d2ydx2(n-1) = b(n-1)/a(n-1)
+       do 600 i = n-2, 2, -1
+         d2ydx2(i) = (b(i) - d2ydx2(i+1))/a(i) ! 2nd derivatives
+  600   continue
+       Return
+     END
+
+     Real Function DyDx(i) ! first derivative
+     Integer i
+     Common/Splines/n, h, xx(100), yy(100), d2ydx2(100)
+     Integer n
+     Real h, xx, yy, d2ydx2
+       DyDx = (yy(i+1)-yy(i))/h - h*(d2ydx2(i)/3+d2ydx2(i+1)/6)
+       Return
+     END
+
+     Real Function D3yDx3(i) ! third derivative
+     Integer i
+     Common/Splines/n, h, xx(100), yy(100), d2ydx2(100)
+     Integer n
+     Real h, xx, yy, d2ydx2
+       D3yDx3 = (d2ydx2(i+1) - d2ydx2(i))/h
+       Return
+     END
+
+     Real Function SplineInt(x) !Interpolate in table made by SplineMake
+     Real x
+     Common/Splines/n, h, xx(100), yy(100), d2ydx2(100)
+     Integer n
+     Real h, xx, yy, d2ydx2, DyDx, D3yDx3, dx
+     Integer i
+       i = Int((x-xx(1))/h)+1
+       if (i .LT. 1 )   i = 1
+        if (i .GT. n-1 ) i = n-1
+        dx = x -xx(i)
+C -interpolate x-
+       if (i .EQ. n ) then
+         SplineInt = yy(i)
+       else
+         SplineInt = yy(i) + (DyDx(i) + (d2ydx2(i)/2 +
+     1                                          D3yDx3(i)/6*dx)*dx)*dx
+       endIf
+       Return
+     END
+
+     -----------------------------Spline.Dat----------------------
+
+Test Cubic Splines  (Data from Chapter 7)
+          17   0.000000       0.000000
+    0.00000        1361.32
+    10.0000        13 i =1
+    20.0000        1213.94
+    30.0000        1074.51
+    40.0000        944.439
+    50.0000        855.572
+    60.0000        818.633
+    70.0000        821.905
+    80.0000        840.213
+    90.0000        849.560
+    100.000        840.213
+    110.000        821.905
+    120.000        818.633
+    130.000        855.571
+    140.000        944.437
+    150.000        1074.51
+    160.000        1213.93
+
+================================  APPENDIX D ================================
+C Program D.1: \Append-D\SampPlt.For
+C Sample plotting program - see Program D.5, SmpScrip, for a more detailed
+C  version of this program with several options including printer selection.
+C Uses QuikScrp, GenUtil
+     Program SampPlt
+     Logical Ask
+     Logical setLog/.FALSE./, fullXGrid/.FALSE./
+     Character ReadChar
+C -----------------------plot ranges-------------------------
+      Real xLo/0.0/, yLo/0.0/, xHi/500.0/, yHi/100.0/
+C -----------------------------------------------------------
+      Integer nPts/11/, i
+      Real   x, y, xPrev, yPrev, dx
+      Logical printit/.FALSE./
+     Character*1 plotType
+     Real xx(100), yy(100)
+        dx = (xHi-xLo)/(nPts-1)
+       if (ASK('Do you want a semi-log plot? ')) then
+          yLo       = 1.0
+          setLog    = .TRUE.
+         fullXGrid = .TRUE.
+        endIf
+       Print *, '(H)istogram (D)ata crosses, or (S)pline curve? '
+       plotType = ReadChar()
+       Call InitDisplay(printIt, 'SAMPPLT.SCR', ' ', 0)
+       if (ASK('Do you want mono for screen dump (Y or N)?  '))
+     1    call SetMono(0,15,1,0) ! forg, bkg palette; forg, bkg color
+C ---------------------  Calls to Plotting Routines -----------------
+       Call InitGraphics(setLog,'\QDisplay\') !Set path to graphics driver
+       Call Border(xLo, yLo, xHi, yHi)
+       Call Xgrid(fullXGrid,5,0) !FullXGrid was set .TRUE. for LOG plot
+       Call Ygrid(.FALSE. ,5,1)     ! FALSE gives short ticks at edges
+       Call XLabel('This is the X AXIS') ! max .EQ. 50 chars in VGA
+       Call YLabel('This is the Y AXIS') ! max .EQ. 35 chars in VGA
+       Call OpenWindow                   ! define the plotting window
+        x = dx/2-dx
+        xPrev = x + dx
+       yPrev = 0                         ! yPrev is used by RHist
+        do 100 i = 1, nPts
+          x = x + dx
+          y = 90*exp(-x/130)  ! calculate a simple exponential example
+         if (plotType .EQ. 'H')     then         ! histogram
+          Call RHist(xPrev,yPrev, x+dx, y)
+         elseIf (plotType .EQ. 'D') then         ! data circles
+          Call RDataCircle(x, y, 2, sqrt(y))    ! X, Y, dX, dY
+         elseIf (plotType .EQ. 'S') then         ! spline
+           xx(i) = x                            ! spline curve req's arrays
+             yy(i) = y
+           endIf
+  100   continue
+       if (plotType .EQ. 'S') then             ! spline curve YLa      Call qSetlinestyle(0,0,3)             ! solidLn, 0, thickWidth
+         Call SplineMake(nPts, 0, 0, xx, yy)   ! now, calc spline curve
+         Call Scurve(1,nPts,5,0,xx) ! 1st,last pt,# interp pts,x-offset,x-array
+         Call qSetlinestyle(0, 0, 1)           ! solidLn, 0, normWidth
+        endIf
+       Call CloseGraphics
+      END
+      Include '\Append-D\QuikScrp.for'
+     Include '\Chapt-6\GenUtil.for'
+
+C Program D.2: \Append-D\SampHist.For
+C Character or graphics histograms - Gaussian curve by Monte Carlo
+C  Uses  QuikHist, MonteLib
+     Program SampHist
+     Integer i, nEvents/500/
+     Real    r, mean, RandomGaussDeviate
+      Real    lo/0.0/, int/1.0/, hi/10.0/ !lo - hi = range, int=interval
+     Character * 1  which, ReadChar
+        mean = (hi + lo)/2        ! Gaussian mean
+       sigma = (hi+lo)/6         ! Gaussian standard deviation
+       Print *, 'Screen Display - (G)raphics  or (C)haracters? '
+       which = ReadChar()
+       Call SetRandomDeviateSeed(317,1375,1237)
+       Call HistInit(' ')
+       Call HistSetup(1, lo, int, hi,'Gaussian Deviate')
+       Print *
+       do 100 i= 1, nEvents
+         Print 1100,i
+ 1100   Format('+Event #',i4)
+         r=sigma*RandomGaussDeviate() + mean
+         Call Histogram(1,r)
+  100   continue
+       Call HistDisplayAll(which.EQ.'G')
+      END
+     Include '\Chapt-6\GenUtil.For'
+     Include '\Append-D\QuikHist.For'
+     Include '\Append-D\QuikScrp.For' ! used by QuikHist
+     Include '\Chapt-5\MonteLib.For'
+
+C Program D.3: \Append-D\QuikHist.For
+C Makes histograms. Character or graphics display.
+C Uses QuikScrp
+     Block Data qHistData
+     Include '\Append-D\qHistInc.for'
+     Data  hNumMax/0/
+     Data initCalled/.false./, terminal/.true./,
+     1  borderDefined/.false./, printCode/'n'/
+     END
+
+     Subroutine GHistDisplay(hNum)   ! Graphics display
+     Include '\Append-D\qHistInc.for'
+     Integer hNum
+     Logical printIt
+     Character*8  scriptF    /'HIST.SCR'/! script file for graphics commands
+     Character workDrive     /' '/   ! use current drive for workfiles
+     Integer workMem         /0/     ! 0 -> 32k work space for hard copy
+     Character*4  printer    /'FX'/  ! select printer
+     Character*4  printPort  /'LPT1'/! 'LPT1','PT2','COM1',or 'COM2'
+     Character    pageSize   /'H'/   ! 'H' or 'F' for Half or Full;
+     Character    resolution /'M'/   ! 'L'ow, 'M'edium or 'H'igh
+     Integer i, nTry, nMax
+     Real    xPrev, yPrev
+       PrintIt = .NOT. Terminal
+       if (.NOT. histExists(hNum) )  then
+         Print *,' No Histogram'
+       else
+         nMax=0
+         do 100 i=0, (histNbins(hNum)-1)
+          if (histData(i+histStart(hNum)) .GT. nMax )
+     1        nMax=histData(i+histStart(hNum))
+  100     continue
+         nTry = 1
+         do while (nTry .LE. nMax)
+          nTry = 10 * nTry
+         end do
+         nTry = nTry / 10
+         nMax = nMax - Mod(nMax,nTry)
+         nMax = nMAx + nTry
+         Call InitDisplay(printIt, scriptF, workDrive, workMem)
+         if (printIt)
+     1      Call SelectPrinter(printer, printPort, pageSize,resolution)
+         Call InitGraphics(.FALSE. ,'\QDisplay\')
+         if (.Not. BorderDefined)  then
+          xLo   = histBot(hNum)
+          xhi   = histTop(hNum)
+          nxTic = 5
+          nxDec = 2
+          fullGrid = .FALSE.  !{edge ticks only}
+         endIf
+         Call Border(xLo, 0.0, xHi, Float(nMax))
+         Call Xgrid(fullGrid, nxTic, nxDec)
+         Call Ygrid(fullGrid, 5, 0)
+         Call Xlabel(histLabel(hNum))
+         Call Ylabel('Number of Events')
+         Call OpenWindow
+         xPrev = histBot(hNum)
+         yPrev = 0
+         do 200 i = 0, histNbins(hNum)-1
+          Call RHist(xPrev, yPrev, histBot(hNum)+(i+1)*histInt(hNum),
+     1                              Float(histData(i+histStart(hNum))))
+  200     continue
+       endIf
+       Return
+     END
+
+     Subroutine HistDisplay(hNum)       !Text-based display
+     Include '\Append-D\qHistInc.for'
+     Integer hNum, i, j, iscl, nMax, remainder
+     Character printChar1, printChar2
+       if (.NOT. histExists(hNum) ) then
+         Print *, 'No Histogram'
+       else
+         Call HistStats(hNum)
+          nMax=0
+          do 100 i = 0 ,HistNbins(hNum)-1
+          if (histData(i+HistStart(hNum)) .GT. nMax )
+     1               nMax=histData(i+HistStart(hNum))
+  100     continue
+         iscl=nMax / 50 +1
+         if (printCode .EQ. 'n') then
+          printChar1=char(iscl+48) !  {# counts}
+         else
+          printChar1 = printCode
+         endIf
+         do 200 i=0, histNbins(hNum)-1
+ 1000 Format(1xF10.4,I8,' ')
+         Write(5, 1000) histBot(hNum)+i*histInt(hNum),
+     1           histData(i+histStart(hNum))
+         if (histData(i+histStart(hNum)).GT.0 ) then
+          do 210 j=1, histData(i+histStart(hNum))/iscl
+ 1100 Format('&'A1)
+  210       write(5, 1100) printChar1
+         endIf
+         remainder = Mod(histData(i+HistStart(hNum)), iscl)
+         if (remainder .NE. 0 ) then
+          PrintChar2= Char(remainder+48)
+          Write(5, 1100) printChar2
+         endIf
+  200     continue
+       endIf
+       if (.not.Terminal) close(unit=5)
+       Return
+     END
+
+     Subroutine HistDisplayAll(graph) !Displays all histograms in either mode
+     Include '\Append-D\qHistInc.for'
+     Logical graph
+     Integer  i
+       if (graph) then
+         do 200 i = 1, hNumMax
+          Call HistStats(i)
+  200     continue
+       endif
+       do 100 i = 1, hNumMax
+         if (graph) then
+          Call GhistDisplay(i)
+          Call CloseGraphics
+         else
+          Call HistDisplay(i)
+         endif
+  100   continue
+       Close(outDev)
+       Return
+     END
+
+     Integer Function HistFetch(hNum, hBin) ! Fetch contents of one bin
+     Include '\Append-D\qHistInc.for'
+     Integer hNum, hBin
+       HistFetch=histData(hBin-1+histStart(hNum))
+       Return
+     END
+
+      Subroutine HistInit(outPut)
+     Character*(*) outPut
+     Include '\Append-D\qHistInc.for'
+     Integer i
+       if (outPut .EQ. ' ' )  then      !{terminal display}
+         Open(unit=5, file='con')
+       else
+         Open(unit=5, file=outPut, carriage control='FORTRAN') ! file
+         terminal = .FALSE.
+       endIf
+       do 100 i = 1, 20
+         histExists(i) = .FALSE.
+  100   continue
+       initCalled = .TRUE.
+       histStart(1)=0
+       Return
+     END
+
+      Subroutine Histogram(hNum, x)
+     Include '\Append-D\qHistInc.for'
+     Integer hNum, k
+     Real    x, y
+       y=(x-histBot(hNum))/histInt(hNum)
+        k=Aint(y)
+       if (y .LT.  0)  then
+         histBelow(hNum) = 1 + histBelow(hnum)
+       elseif (k .GE. histNbins(hNum) )  then
+          histAbove(hNum) = 1 + histAbove(hNum)
+        else
+C  ---x is within limits---
+         histIn(hNum)           = 1   + histIn(hNum)
+         histSum(hNum)          = x   + histSum(hNum)
+         histSum2(hNum)         = x*x + histSum2(hNum)
+          histData(k+histStart(hNum)) = 1 + histData(k+histStart(hNum))
+        endIf
+       Return
+     END
+
+     Subroutine HistSetBorder(grid, xLow, xHigh, nxticks, nxdecPt)
+     Include '\Append-D\qHistInc.for'
+     Logical grid
+     Real xLow, xHigh
+     Integer nxTicks, nxdecPt
+       fullGrid = grid
+       xLo      = xLow
+       xHi      = xHigh
+       nxTic    = nxTicks
+       nxDec    = nxDecPt
+       borderDefined = .TRUE.
+       Return
+     END
+
+     Subroutine HistSetup(hNum, bot, int, top, hLabel)
+     Include '\Append-D\qHistInc.for'
+     Integer hNum, i
+     Real bot, int, top
+     Character*(*) hLabel
+       if (.not. initCalled )
+     1    Call QHErrorAbort('HistInit has not been called.')
+        if (hNum .GT. maxNhists )
+     1    Call QHErrorAbort('Too many histograms requested.')
+        histExists(hNum) = .TRUE.
+       if (hNum .GT. 1 )
+     1    histStart(hNum)=histStart(hNum-1)+histNBins(hNum-1)
+        if (hNum .GT. hNumMax ) hNumMax = hNum
+        histBot(hNum)=bot
+        histInt(hNum)=int
+        histTop(hNum)=top
+       histNBins(hNum)=Nint((top-bot)/int)
+       if ((histStart(hNum)+histNBins(hNum)) .GT. maxHistBins )
+     1    Call QHErrorAbort('Too many histogram bins requested.')
+        histLabel(hNum) = hLabel
+       print 1000, hnum, hLabel
+ 1000   Format(' Hist #', I3, A60)
+       print *, ' Bot = ',bot,', top=',Top,', int=',Int
+        do 100 i = histStart(hNum), histStart(hNum)+histNBins(hNum)
+         histData(i)=0
+  100   continue
+        histBelow(hNum) = 0
+        histIn(hNum)    = 0
+        histAbove(hNum) = 0
+        histSum(hNum)   =ogic        histSum2(hNum)  = 0
+       Return
+     END
+
+      Subroutine HistStats(hNum)
+     Include '\Append-D\qHistInc.for'
+     Integer hNum, num
+     Real err
+        num=histIn(hNum)
+       if (num.NE.0 ) then
+         histMean(hNum)= histSum(hNum)/num
+       else
+         histMean(hNum)= 0
+       endIf
+       if (num.NE.0 ) then
+         histStDev(hNum)=sqrt(histSum2(hNum)/num-(histMean(hNum))**2)
+       else
+         histStDev(hNum)=0
+       endIf
+       if (num.NE.0 ) then
+         err=HistStDev(hNum)/sqrt(num)
+       else
+         err=  0
+       endIf
+       Write(5,*) ' Hist #',hNum
+       Write(5,*) histLabel(hNum)
+       Write(5,*) ' (Below = ',histBelow(hNum),' ,In = ',histIn(hNum),
+     1    ' ,Above=',histAbove(hNum),')'
+       Write(5,*) ' Mean = ',HistMean(hNum),
+     1    ' StDev = ',HistStDev(hNum),' Err= ',err
+       Return
+     END
+
+     Subroutine QHerrorAbort(s)
+       character*(*) s
+       print *,s
+       Call Exit
+     END
+
+C Program D.4  Pascal Plotting Routine - Not Applicable
+
+C Program D.5: \Append-D\SmpScrip.For
+C Sample program to produce a script file for Qdisplay. See Program D.1,
+C                     SampPlt, for a shorter version with fewer options.
+C Uses  QuikScrp, GenUtil
+C   --See QUIKSCRP.PAS for available commands.--
+     Program SmpScrip
+     Logical Ask, printIt
+     Logical setLog/.FALSE./, fullXgrid/.FALSE./
+     Character*1 ReadChar
+C     -----------------------plot ranges-------------------------
+      Real xLo/0.0/, yLo/0.0/, xHi/500.0/, yHi/100.0/
+C    ------------------------------------------------------------
+      Real  x, y, xPrev, yPrev, dx, xx(100), yy(100)
+      Integer i, nPts
+     Character * 1 plotType
+     Character * 12
+     1    scriptF   /'SmpScrip.scr'/   ! script file for graphics commands
+     Character * 4
+     2     workDrive  / ' '/         ! ' ' uses current drive for work files
+     3    ,printer    /'FX'/         ! see list below
+     4    ,printPort  /'LPT1'/       ! 'LPT1','PT2','COM1',or 'COM2'
+     5    ,pageSize   /'H'/          ! 'H' or 'F' for Half or Full
+     6    ,resolution /'M'/          ! 'L','M', or 'H' for Low, Medium or High
+C    7    ,parity     /'N'/          ! 'E'ven, 'N'o, or 'O'dd
+C    8    ,nDataBits  /'8'/          ! '7' or '8'
+C    9    ,nStopBits  /'1'/          ! '1' or '2'
+C    A    ,ON        /'Y'/          ! 'Y'es or 'N'o
+     Integer
+     B     workMem    /0/           ! 0 assigns 32k work space for hard copy
+C    C    ,baudRate   /2400/        ! '300','600','1200','2400','4800','9600'
+C       printers
+C                 Epson compatible  9-pin dot matrix 'FX'
+C                 Epson compatible 24-pin dot matrix 'LQ'
+C                 IBM Proprinter X24                 'PP24'
+C                 IBM Quietwriter                    'IBMQ'
+C                 Toshiba 24-pin dot matrix          'Tatri
+C                 LaserJet                           'LJ'
+C            or   PaintJet                           'PJET'
+C    -----------------------------------------------------------------
+        nPts = 11
+        dx = (xHi-xLo)/(nPts-1)
+       printIt = Ask('Do you want to print your graph? (Y or N) ')
+C                             printIt = .TRUE. or .FALSE.  for Y or N
+       Call InitDisplay(printIt, scriptF, workDrive, workMem)
+C    -------------------Sample printer setup -------------------
+        if (printIt) then
+         Call SelectPrinter(printer, printPort, pageSize, resolution)
+C  --The following statement is needed only for a serial port -----
+         SetSerialPort(baudRate,parity,nDataBits,nStopBits,XON)
+       endIf
+C    ------------------------------------------------------------
+       if (Ask('Do you want a semi-log plot? ')) then
+          yLo       = 1.0
+          setLog    = .TRUE.
+          FullXGrid = .TRUE.
+        endIf
+       Print *, '(H)istogram (D)ata crosses, or (S)pline curve? '
+       plotType = readChar()
+C  ---------------------  Calls to Plotting Routines -----------------
+       Call InitGraphics(setLog,' ')       ! Set path to graphics driver
+       Call Border(xLo, yLo, xHi, yHi)
+       Call Xgrid(FullXGrid,5,0) !  FullXGrid was set .TRUE. for LOG plot,
+C                                            otherwise .FALSE.
+       Call Ygrid(.FALSE. ,5,1)     ! FALSE gives short ticks at edges
+       Call XLabel('This is the X AXIS') ! max .EQ. 50 chars in VGA
+       Call YLabel('This is the Y AXIS') ! max .EQ. 35 chars in VGA
+       Call OpenWindow                   ! define the plotting window
+        x = dx/2-dx
+        xPrev = x + dx
+        yPrev = 0  !   yPrev is used by RHist
+        do 200 i = 1, nPts
+          x = x + dx
+          y = 90*exp(-x/130)   ! calculate a simple exponential example
+         if (plotType .EQ. 'H')     then
+          Call  RHist(xPrev,yPrev, x+dx, y)
+         elseIf (plotType .EQ. 'D') then
+          Call RDataCircle(x, y, 2, sqrt(y))  ! X,Y,dX,dY
+         elseIf (plotType .EQ. 'S') then
+             xx(i) = x  ! splines requires arrays
+             yy(i) = y
+          endIf
+  200   continue
+       if (plotType .EQ. 'S' )   then              ! spline
+         Call qSetlinestyle(0, 0, 3)               ! solidln, 0, thickWidth
+         Call SplineMake(nPts, 0, 0, xx, yy)
+         Call Scurve(1,nPts,5,0,xx) ! 1st,last pt,# int pts,x-offset,x-array
+         Call qSetlinestyle(0, 0, 1)   ! solidLn, 0, normWidth
+        endIf
+       Call CloseGraphics
+C -----------------------------------------------------------------
+C At this point, could link directly to the Qdisplay program with a statement
+C of the type  "Execute('Display.exe',scriptF)"
+      END
+     Include '\Append-D\QuikScrp.for'
+     Include '\Chapt-6\GenUtil.for'
+
+C Program D.6: \Appe----\QuikScrp.For
+C Write graphics script file for Qdisplay - Screen printer graphics
+C -----------------------INITIALIZATION ROUTINES----------------------
+     Subroutine Border(x1,y1,x2,y2)
+     Real x1,y1,x2,y2
+       Write(5, *) 'Border'
+       Write(5, *) x1, y1, x2, y2
+       Return
+     END
+
+     Subroutine InitDisplay(printPic, scriptFile, workDrive, workSpace)
+C
+C  printPic  = .TRUE. for hardCopy, .FALSE.  for screen
+C  workDrive : work space for temporary files
+C              (e.g., 'A' or 'B' or 'C', etc. '' for current directory)
+C  workSpace : memory allocation for drivers.
+C              min = 16k, workSpace =  0 defaults to 32k
+     Logical        printPic
+     Character*(*)  scriptFile
+     Character      workDrive
+     Integer        workSpace
+     Character*20 scriptFileName
+     Common/QukScrip/scriptFileName
+       scriptFileName = scriptFile
+       Open(Unit=5, file=scriptFile)
+       write(5,*) 'InitDisplay'
+       write(5,*) printPic,  workDrive, workSpace
+       Return
+     END
+
+     Subroutine InitGraphics(logOn,graphDriverPath)
+     Logical  logOn
+     Character*(*) graphDriverPath
+       Write(5,*) 'InitGraphics'
+       if (logOn)  then
+         Write(5,*) ' TRUE ',' ',graphDriverPath
+       else
+         Write(5,*) ' FALSE',' ',graphDriverPath
+       endIf
+       Return
+     END
+
+     Subroutine SetDefaultColors(c0,c1,c2,c3,c4,c5,c6,c7)
+     Integer c0,c1,c2,c3,c4,c5,c6,c7
+       Write(5,*) 'DefaultColors'
+       Write(5,*) c0,c1,c2,c3,c4,c5,c6,c7
+       Return
+     END
+
+     Subroutine SetMono(fgPal, bkgPal, fgCol, bkgCol)  !{Print Screen}
+     Integer fgPal, bkgPal, fgCol, bkgCol
+       Write(5,*) 'MonoPlot'
+       Write(5,*) fgPal, bkgPal, fgCol, bkgCol
+       Return
+     END
+
+     Subroutine OpenWindow
+       Write(5,*) 'OpenWindow'
+       Return
+     END
+
+C --------------------------TERMINATION ROUTINES----------------------
+     Subroutine CloseGraphics
+     Character*20 scriptFileName
+     Common/QukScrip/scriptFileName
+     Integer i
+       Write(5,*) 'CloseGraphics'
+       Close(5)
+       i = Index(scriptFileName,'.')
+       Print 1000, scriptFileName(1:i-1)
+ 1000   Format(' To plot graph  -----   Type QDISPLAY ', A)
+     1
+       Return
+     END
+
+     Subroutine CloseWindow
+       Write(5,*) 'CloseWindow'
+       Return
+     END
+
+C --------------------------POINT SCALING ROUTINES--------------------
+     Integer function  XScale(x)
+     Real x
+       Write(5,*) 'XScale'
+       Write(5,*) x
+       Xscale = 0 ! This is not used, but eliminates a compiler warning
+       Return
+     END
+
+     Integer function  YScale(y)
+     Real y
+       Write(5,*) 'YScale'
+       Write(5,*) y
+       Yscale = 0 ! This is not used, but eliminates a compiler warning
+       Return
+     END
+
+     Subroutine SetScreenRange(ix1, iy1, ix2, iy2)
+     Integer ix1ctio1, ix2, iy2
+       Write(5,*) 'ScreenRange'
+       Write(5,*) ix1, iy1, ix2, iy2
+       Return
+     END
+
+C ----------------------------GRID ROUTINES---------------------------
+     Subroutine Xgrid(fullGrid, nTics, nDec)
+     Logical fullGrid
+     Integer nTics, nDec
+       Write(5,*) 'Xgrid'
+       Write(5,*) fullGrid, nTics, nDec
+       Return
+     END
+
+     Subroutine Ygrid(fullGrid, nTics, nDec)
+     Logical fullGrid
+     Integer nTics, nDec
+       Write(5,*) 'Ygrid'
+       Write(5,*) fullGrid, nTics, nDec
+       Return
+     END
+
+     Subroutine SetXYFormat(xForm, yForm)
+     Integer xForm, yForm
+       Write(5,*) 'XYFormat'
+       Write(5,*) xForm, yForm
+       Return
+     END
+
+C ------------------------LABELLING ROUTINES-------------------------
+     Subroutine XLabel(w)           ! max = 50 characters in VGA
+     Character*(*) w
+       Write(5,*) 'XLabel'
+       Write(5,*) w
+       Return
+     END
+
+     Subroutine YLabel(w)           ! max = 35 characters in VGA
+     Character*(*) w
+       Write(5,*) 'YLabel'
+       Write(5,*) w
+       Return
+     END
+
+     Subroutine WriteTextXY(x,y,s) ! out text 's' to real coords x,y
+     Character*(*) s
+     Real x,y
+       Write(5,*) 'WriteTextXY'
+       Write(5,*) x,y,' ',s
+       Return
+     END
+
+C ------------------DATA AND CURVE PLOTTING ROUTINES------------------
+     Subroutine RCurve(i, x,y)  ! Connect the dots, i = 0 on 1st call
+     Integer i
+     Real x,y
+       Write(5,*) 'RCurve'
+       Write(5,*) i,x,y
+       Return
+     END
+
+     Subroutine RDataCircle(x,y,dr,dy)  ! Vertical line through solid circle
+     Real  x,y,dr,dy
+       Write(5,*) 'DataCircle'
+       Write(5,*) x,y,dr,dy
+       Return
+     END
+
+     Subroutine RDataCross(x,y,dx,dy)
+     Real x, y, dx, dy
+       Write(5,*) 'DataCross'
+       Write(5,*) x, y, dx, dy
+       Return
+     END
+
+     Subroutine RHist(x1, y1, x2, y2)       ! Plot a histogram
+     Real x1, y1, x2, y2
+       Write(5,*) 'Histogram'
+       Write(5,*) x1, y1, x2, y2
+       x1=x2         ! calling program need not update x1 and y1
+       y1=y2
+       Return
+     END
+
+     Subroutine RLine(x1,y1,x2,y2)
+     Real x1, y1, x2, y2
+       Write(5,*) 'RealLine'
+       Write(5,*) x1,y1,x2,y2
+       Return
+     END
+
+C --------------------------SPLINE ROUTINES---------------------------
+     Subroutine SplineMake(nn, d2ydx2A, d2ydx2B, xIn, yIn)
+     Integer nn
+     Real d2ydx2A, d2ydx2B, xIn(nn), yIn(nn)
+       Write(5,*) 'SplineMake'
+       Write(5,*) nn, d2Ydx2A, d2ydx2B
+       do 100 i = 1, nn
+         Write(5,*) xIn(i), yIn(i)
+  100   continue
+       Return
+     END
+
+     Subroutine SCurve(pt1, ptn, nInts, XoffSet, x)
+     Integer pt1, ptn, nInts
+     Real XoffSet, x(ptn)
+       Write(5,*) 'SplineCurve'
+       Write(5,*) pt1, ptn-pt1+1, nInts, XoffSet
+       do 100 i = pt1, ptn
+         Write(5,*) x(i)
+  100   continue
+       Return
+     END
+
+C ----------------------------Graphics Controls-----------------------
+     Subroutine qSetLineStyle(style, pattern, thickness)
+     Integer style, pattern, thickness
+       Write(5,*) 'LineStyle'
+       Write(5,*) style,pattern,thickness
+       Return
+     END
+
+     Subroutine qSetTextJustify(Horiz, Vert)
+     Integer Horiz, Vert
+       Write(5,*) 'TextJustify'
+       Write(5,*) Horiz, Vert
+       Return
+     END
+
+     Subroutine qSetTextStyle(font, dir, size)
+     Integer font, dir, size
+       Write(5,*) 'TextStyle'
+       Write(5,*) Font, Dir, Size
+       Return
+     END
+
+C ---------------------------Hard Copy Functions----------------------
+     Subroutine SelectPrinter(driverC, portC, qSize, qResolution)
+     Character*(*) driverC, qSize, portC
+     Character qResolution
+       Write(5,*) 'SelectPrinter'
+       Write(5,*) driverC,portC, qSize,qResolution
+       Return
+     END
+
+     Subroutine SetSerialPort(baudC,parityC,dataBitsC, stopBitsC, XonC)
+     Character*(*) baudC
+     Character parityC, dataBitsC, stopBitsC, XonC
+       Write(5,*) 'SetSerialPort'
+       Write(5,*) baudC, parityC, dataBitsC, stopBitsC, XonC
+       Return
+     END
+
+C Program D.7: \Append-D\QhistInc.For
+C----- Common for QuikHist --------
+     Common /QHists/ maxNHitst, hNumMax, initCalled,
+     1 terminal, borderDefined, printCode, histBot, histInt, histTop,
+     2 histNbins, histStart, histLabel, histBelow, histIn, histAbove,
+     3 histSum, histSum2, histMean, histStDev, histExists, histData,
+     4 outDev, fullGrid, xLo, xHi, nXtic, nXdec
+     Parameter (maxNHists=20)
+     Parameter (maxHistBins=1000)
+     integer  hNumMax
+     Logical initCalled, terminal, borderDefined
+     Real histBot(1:maxNHists), histInt(1:maxNHists),
+     1 histTop(1:maxNHists)
+     Character printCode
+C             # bins,                 pointer to 1st bin of hist
+     Integer histNbins(1:maxNHists), histStart(1:maxNHists)
+     Integer histBelow(1:maxNHists), histIn(1:maxNHists),
+     1 histAbove(1:maxNHists)                         ! where the events went
+     Real histSum(1:maxNHists), histSum2(1:maxNHists),
+     1 histMean(1:maxNHists), histStDev(1:maxNHists)  ! statistics
+     Character*32 histLabel(1:20)                    ! Histogram label
+     Logical histExists(1:maxNHIsts)
+     Integer histData(0:maxHistBins)                 ! the bins
+     Logical fullGrid
+     Real xLo, xHi
+     Integer nXtic, nxDec
+C-----------------------------------------------------------

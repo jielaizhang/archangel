@@ -1,0 +1,11 @@
+#! /bin/csh -f
+
+threshold
+/usr/local/ImageMagick-5.4.6/utilities/convert -gamma 4 -negate galaxy.fits 1.gif
+/usr/local/ImageMagick-5.4.6/utilities/convert -resize 400x400 1.gif 2.gif
+mv -f 2.gif 1.gif
+/usr/local/ImageMagick-5.4.6/utilities/convert tmp.fits 2.gif
+/usr/local/ImageMagick-5.4.6/utilities/convert -resize 400x400 2.gif 3.gif
+mv -f 3.gif 2.gif
+/usr/local/ImageMagick-5.4.6/utilities/composite -compose multiply 1.gif 2.gif 3.gif
+/usr/local/ImageMagick-5.4.6/utilities/composite -compose copyred 1.gif 3.gif 4.gif

@@ -1,0 +1,342 @@
+#!/usr/bin/env python
+
+# this is matplotlib version of the HIST program
+# first attempt to port PGPLOT to matplotlib (dear god)
+
+# note: several things changed in matplotlibrc to increase font/tick sizes
+
+import sys,math,os
+from pylab import *
+import numpy
+from matplotlib.ticker import MultipleLocator # needed to fix up minor ticks
+
+def ticks(xmin,xmax):
+  r=abs(xmax-xmin)
+  if r == 1: return 0.25
+  r=round(r/(10.**int(math.log10(r))),9)
+  for n in range(0,-10,-1):
+    if int(round(r/(10.**(n)),1))//((r/(10.**(n)))) == 1: break
+
+  if int(round(r/(10.**(n)),1)) in [1,5]:
+    return (r/5.)*(10.**int(math.log10(abs(xmax-xmin))))
+  elif int(round(r/(10.**(n)),1)) in [2,4,8]:
+    return (r/4.)*(10.**int(math.log10(abs(xmax-xmin))))
+  elif int(round(r/(10.**(n)),1)) in [3,6,9]:
+    return (r/3.)*(10.**int(math.log10(abs(xmax-xmin))))
+  elif int(round(r/(10.**(n)),1)) == 7:
+    return (r/7.)*(10.**int(math.log10(abs(xmax-xmin))))
+
+def xits(x,xsig):                      # clipping mean subroutine
+  xmean1=0. ; sig1=0.
+  for tmp in x:
+    xmean1=xmean1+tmp
+  try:
+    xmean1=xmean1/len(x)
+  except:
+    return 'NaN','NaN','NaN','NaN','NaN','NaN','NaN'
+  for tmp in x:
+    sig1=sig1+(tmp-xmean1)**2
+  try:
+    sig1=(sig1/(len(x)-1))**0.5
+  except:
+    return 'NaN','NaN','NaN','NaN','NaN','NaN','NaN'
+  xmean2=xmean1 ; sig2=sig1
+  xold=xmean2+0.001*sig2
+  its=0
+  while (xold != xmean2 and its < 100):
+    xold=xmean2
+    its+=1
+    dum=0.
+    npts=0
+    for tmp in x:
+      if abs(tmp-xold) < xsig*sig2:
+        npts+=1
+        dum=dum+tmp
+    try:
+      xmean2=dum/npts
+    except:
+      return xmean1,sig1,'NaN','NaN',len(x),'NaN','NaN'
+    dum=0.
+    for tmp in x:
+      if abs(tmp-xold) < xsig*sig2:
+        dum=dum+(tmp-xmean2)**2
+    try:
+      sig2=(dum/(npts-1))**0.5
+    except:
+      return xmean1,sig1,'NaN','NaN',len(x),'NaN','NaN'
+  return xmean1,sig1,xmean2,sig2,len(x),npts,its
+
+def draw_h(): # main drawing routine, note the globals from clicker functions
+  global xlow,xhi,ylow,yhi,xbin,line,colors,ft,cid1,cid2,raw,labels,cmd,norm,ax,scale
+
+  nbin=int((xhi-xlow)/xbin) # initialize bins,yhi,colors
+  a=[]
+  icolor=-1
+  yhi=0.
+  ymax=[]
+
+  if norm: # plot normalized histogram
+    for x in raw:
+      if scale: yhi=0.
+      xstep=(xhi-xlow)/1000.
+      step=xlow
+      for tmp in range(1000):
+        xsum=0.
+        for m in range(len(x)):
+          z=(step-x[m])/(xbin/2.)
+          xsum=xsum+math.exp(-0.5*z**2)
+        if xsum > yhi: yhi=xsum
+        step=step+xstep
+      ymax.append(yhi)
+    if scale:
+      yhi=1.1
+    else:
+      yhi=yhi+0.1*yhi
+    dy=0.0015*yhi # gluge to fix plot at bottom axis
+    axis([xlow,xhi,ylow+dy,yhi])
+    for t,x in zip(ymax,raw):
+      icolor=icolor+1
+      xstep=(xhi-xlow)/1000.
+      step=xlow
+      v=[xlow] ; w=[0.]
+      for tmp in range(1000):
+        xsum=0.
+        for m in range(len(x)):
+          z=(step-x[m])/(xbin/2.)
+          xsum=xsum+math.exp(-0.5*z**2)
+        v.append(step)
+        if scale:
+          w.append(xsum/t)
+        else:
+          w.append(xsum)
+        step=step+xstep
+      plot(v,w,colors[icolor]+'-')
+      a.append(xits(x,3.0)) # 3 sigma clip
+
+  else: # regular histogram
+    for x in raw: 
+      bin=[]
+      data=[]
+      for i in range(nbin+2):
+        bin.append(i*xbin-xbin/2.+xlow)
+        data.append(0)
+      for s in x:
+        for w in range(len(bin)-1):
+          if s >= bin[w] and s < bin[w+1]:
+            data[w]=data[w]+1
+      for w in data:
+        if w > yhi: yhi=w
+      a.append(xits(x,3.0)) # 3 sigma clip
+      if scale:
+        data=numpy.array(data)
+        data=data/float(yhi)
+        yhi=1.1
+      else:
+        yhi=yhi+0.1*yhi
+      v=[] ; w=[] ; lastw=0.
+      for xx,yy in zip(bin,data):
+        v.append(xx)
+        w.append(lastw)
+        v.append(xx)
+        w.append(yy)
+        lastw=yy
+      icolor=icolor+1
+      plot(v,w,colors[icolor]+'-')
+#      hist(x, nbin+1., range=(xlow-xbin/2.,xhi+xbin/2.), align='mid', histtype='step', edgecolor=colors[icolor])
+
+  try:
+    for i,t in enumerate(a):
+      text(t[2],yhi-0.05*(yhi-ylow),'$\downarrow$',color=colors[i])
+  except:
+    pass
+
+  dy=0.0015*yhi # gluge to fix plot at bottom axis
+  axis([xlow,xhi,ylow+dy,yhi]) #gludge to get bottom axis right
+  tick=ticks(ax.xaxis.get_majorticklocs()[0],ax.xaxis.get_majorticklocs()[1])
+  minorLocator   = MultipleLocator(tick)
+  ax.xaxis.set_minor_locator(minorLocator)
+  tick=ticks(ax.yaxis.get_majorticklocs()[0],ax.yaxis.get_majorticklocs()[1])
+  minorLocator   = MultipleLocator(tick)
+  ax.yaxis.set_minor_locator(minorLocator)
+  xlabel(labels['x'])
+  ylabel(labels['y'])
+  suptitle(labels['t'])
+  draw()
+
+if sys.argv[1] == '-h':
+  print 'Usage: hist data_file column_number'
+  print
+  print 'options:  lower, upper, bin size'
+  print '          f = new file'
+  print '          n = normalized histogram'
+  print '          s = scale histograms'
+  print '          h = hardcopy (hist.ps)'
+  print '          m = output histogram to mongo file'
+  print '          t = enter title'
+  print '          x = enter xlab'
+  print '          q = exit'
+  sys.exit()
+
+try:
+  col=int(sys.argv[2])
+except:
+  col=0
+
+file=open(sys.argv[1],'r')
+x=[]
+raw=[]
+xlow=1.e33
+xhi=-1.e33
+while 1:
+  input=file.readline()
+  if not input or input == '\n': break
+  x.append(float(input.split()[col]))
+  if float(input.split()[col]) < xlow: xlow=float(input.split()[col])
+  if float(input.split()[col]) > xhi: xhi=float(input.split()[col])
+file.close()
+raw.append(x)
+
+nbin=25 # initialize parameters
+xbin=(xhi-xlow)/nbin
+ylow=0.
+labels={'x':'','y':'N','t':''}
+line=''
+cmd=''
+norm=0
+scale=0
+colors=['k','r','g','b','c','m','y']
+
+fig = figure(figsize=(12, 9), dpi=80)  # initialize plot parameters
+ax = fig.add_subplot(111)  # assign ax for text and axes
+manager = get_current_fig_manager() # next 3 lines removes window title and sets geometry of Tk
+manager.window.title('')
+if 'deepcore' in os.uname()[1]:
+  manager.window.geometry('+600+200') # move the window for deepcore big screen
+else:
+  manager.window.geometry('+200+50')
+draw_h() # 1st draw
+
+def get_string(event): # event routine to get strings
+  global xlow,xhi,ylow,yhi,xbin,line,colors,ft,cid1,cid2,raw,labels,cmd,norm,ax,scale
+#  print 'cid2 key',event.key,'cmd',cmd,'line',line
+
+  if event.key == 'enter': # <cr> disconnect, reconnect main clicker, do action
+    disconnect(cid2)
+    action()
+    cid1=connect('key_press_event',clicker)
+
+  elif event.key == 'backspace': # delete characters, stop at 0 or ': '
+    try:
+      if line[-2:] != ': ': line=line[:-1]
+    except:
+      pass
+
+  elif event.key in [None,'shift','control','alt','right','left','up','down','escape']: # ignore weird keys
+    pass
+
+  else:
+    line=line+event.key
+
+  try:
+    fig.texts.remove(ft) # remove the line for redraw
+  except:
+    pass
+  ft=figtext(0.1,0.05,line,horizontalalignment='left',verticalalignment='top') # type the line at
+                                                                               # the bottom of screen
+def action(): # do the actions from clicker as given by var cmd
+  global xlow,xhi,ylow,yhi,xbin,line,colors,ft,cid1,cid2,raw,labels,cmd,norm,ax,scale
+
+  if cmd in ['x','t']: # add labels
+    labels[cmd]=line.split(': ')[-1]
+
+  elif cmd == 'f': # add another dataset
+    try:
+      file=open(line.split(': ')[-1],'r')
+      x=[]
+      while 1:
+        input=file.readline()
+        if not input or input == '\n': break
+        x.append(float(input.split()[col]))
+      file.close()
+      raw.append(x)
+    except:
+      fig.texts.remove(ft)
+      ft=figtext(0.1,0.05,'FILE ERROR',horizontalalignment='left',verticalalignment='top',color='r')
+      ax = fig.add_subplot(111)
+      draw_h()
+      line=''
+      return
+
+  fig.texts.remove(ft)
+  draw_h()
+  line=''
+  return
+
+def clicker(event): # main event handler
+  global xlow,xhi,ylow,yhi,xbin,line,colors,ft,cid1,cid2,raw,labels,cmd,norm,ax,scale
+#  print 'cid1 key',event.key,'cmd',cmd,'line',line
+
+  cmd=event.key
+
+  if event.key == '/':
+    disconnect(cid1)
+    close('all')
+    sys.exit()
+
+  elif event.key in ['x','t','f']: # note disconnect here and hand off to get_string
+    if event.key == 'x': line='Enter x label name: '
+    if event.key == 't': line='Enter title: '
+    if event.key == 'f': line='Enter file name: '
+    disconnect(cid1)
+    cid2=connect('key_press_event',get_string)
+
+  elif event.key == 'enter': # change axes and bin
+    try:
+      xlow=float(line.split()[0])
+      xhi=float(line.split()[1])
+      xbin=float(line.split()[2])
+      clf()
+      ax = fig.add_subplot(111)
+      draw_h()
+      line=''
+    except: # complex handler for bad inputs, flashs red message
+      fig.texts.remove(ft)
+      ft=figtext(0.1,0.05,'INPUT ERROR',horizontalalignment='left',verticalalignment='top',color='r')
+      ax = fig.add_subplot(111)
+      draw_h()
+      line=''
+
+  elif event.key == 's': # scale the histograms
+    scale=abs(scale-1)
+    clf()
+    ax = fig.add_subplot(111)
+    draw_h()
+
+  elif event.key == 'n': # normalized histogram
+    norm=abs(norm-1)
+    clf()
+    ax = fig.add_subplot(111)
+    draw_h()
+
+  elif event.key == 'h': # postscript hardcopy
+    savefig('hist.pdf',orientation='landscape')
+
+  elif event.key == 'backspace':
+    try:
+      if line[-2:] != ': ': line=line[:-1]
+    except:
+      pass
+
+  elif event.key in [None,'shift','control','alt','right','left','up','down','escape']:
+    pass
+
+  else:
+    line=line+event.key
+  try:
+    fig.texts.remove(ft)
+  except:
+    pass
+  ft=figtext(0.1,0.05,line,horizontalalignment='left',verticalalignment='top')
+
+cid1=connect('key_press_event',clicker)
+show() # all matplotlib scripts end with this

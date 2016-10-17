@@ -1,0 +1,9 @@
+This directory contains the sky routines.  
+
+sky_box determines the mean sky in a frame through various techniques.
+
+clean_blanks is a routine to find all the pixels in a frame with the
+same value and set them to NaN.  This is necessary since some archives
+use different values to represent a masked pixel (for example, zero or -32767).
+
+sky.py - finds sky, writes to XML file

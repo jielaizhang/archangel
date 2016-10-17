@@ -1,0 +1,52 @@
+      subroutine xits(data,npts,xsig,xmean1,sig1,xmean2,sig2,npts2,its)
+*
+*     data = data points, npts = # of data, xsig = # of sigmas for delete
+*     xmean1 = first mean, xsig1 = first sigma
+*     xmean2 = final mean, xsig2 = final sigma
+*     npts2 = final # of data used, its = # of iterations on mean
+*
+      real data(npts)
+
+      xmean1=0.
+      sig1=0.
+      n=0
+      do i=1,npts
+        if(data(i).eq.data(i)) then
+          n=n+1
+          xmean1=xmean1+data(i)
+        endif
+      enddo
+      xmean1=xmean1/n
+      do i=1,npts
+        if(data(i).eq.data(i)) sig1=sig1+(data(i)-xmean1)**2
+      enddo
+      sig1=(sig1/(n-1))**.5
+
+      sig2=sig1
+      xmean2=xmean1
+      xold=xmean2+0.001*sig1
+      its=0
+      do while (xold.ne.xmean2)
+        xold=xmean2
+        its=its+1
+        dum=0.
+        npts2=0
+        do j=1,npts
+          if(data(j).eq.data(j)) then
+            if(abs(data(j)-xold).gt.xsig*sig2) then
+              data(j)=sqrt(-1.)
+            else
+              npts2=npts2+1
+              dum=dum+data(j)
+            endif
+          endif
+        enddo
+        xmean2=dum/npts2
+        dum=0.
+        do j=1,npts
+          if(data(j).eq.data(j)) dum=dum+(data(j)-xmean2)**2
+        enddo
+        sig2=(dum/(npts2-1))**.5
+      enddo
+      return
+      end

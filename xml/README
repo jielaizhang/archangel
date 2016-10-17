@@ -1,0 +1,4 @@
+This directory contains the routines to build and read XML files for the package.
+Note the package calls xml_archangel as a subroutine, so a .pyc byte compiled
+copy will appear after first use. xml_smash is for convert old .prf, .sky, .ept
+files into XML format.

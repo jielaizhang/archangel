@@ -1,0 +1,21 @@
+This directory contains the routines needed to perform threshold
+scanning of image files.  The primary program is gasp_images, which
+finds, and determines the moments, of all images above a threshold.
+Various .py files perform file maintence for top routines.
+
+brute_prf.py       - brute force ellipse finder
+convert_ims_prf.py - convert output from gasp_images to prf style
+dump_isophote.py   - dump all the pixels around an isophote
+extreme_lsb.py     - find ellipse for an extreme LSB object by direct moment analysis
+find_target.py     - scan the output from gasp_images for most likely target at xc yc
+gasp_images.f      - moment scan program, original Cawson IMAGES program (still works)
+images.f           - poor rewrite of gasp_images
+ims_clean.f        - clean objects using output of gasp_images
+offset.py          - find the offset between two frames using gasp_images output
+offset_imshift.py  - make a IRAF cl file for offset shifting
+offset_mask.py     - make a shifted mask
+qphot.py           - interactive quick galaxy photometry (primitive)
+quick_scan.py      - quick scan script
+scan.py            - interactive scan GUI
+thres_prf.py       - find a moment ellipse at a threshold
+threshold.f        - write out pixels above threshold

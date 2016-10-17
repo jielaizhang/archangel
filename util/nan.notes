@@ -1,0 +1,7 @@
+To determine if a variable is a NaN you can make use of the property
+that a NaN does not compare equal to anything, including itself.
+Thus, for real variable X, use
+
+        IF (X .NE. X) THEN      ! this will be true if X is NaN
+
+in python, test for str(x) == 'nan'

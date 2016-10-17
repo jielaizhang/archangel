@@ -1,0 +1,13 @@
+This directory contains the photometry routines.  
+
+asymptotic    - performs asymptotic fits to aperture photometry (total mags)
+cgrowth       - spline curve routine
+disk_int      - experimental disk integrator
+draw_apert    - draws the ellipse on a frame
+el            - primary photometry script (read it fool)
+elapert       - elliptical aperture routine with partial pixels (slow!)
+ellipse       -
+old_elpert    - FORTRAN version, obsolete
+quick_elapert - fast aperture photometry, no partial pixels
+sfb_elapert   -
+total_mag     -

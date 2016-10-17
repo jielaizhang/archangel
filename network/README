@@ -1,0 +1,5 @@
+This directory contains the network programs for the system.  WARNING: this
+scripts connect directly to the various servers!  Do not abuse these servers
+with massive requests.  They are intended for small number of downloads.  Data
+servers with passwords require the mechanize python scripts which are *not*
+included in this tarball, contact the PI for information on those techniques.

@@ -1,0 +1,20 @@
+This directory contains the core routines for doing surface photometry.  The
+primary program is efit.f, the ellipse fitter.  Cleaning is done by ims_clean
+and prf_clean. Models from prf data are made by fake. Rest are tools for trouble
+galaxy images.
+
+blend.py      - replace masked pixels with model fit
+do_iso.py     - quick script to do ellipses on different filter frame
+efit.f        - main ellipse fitting program
+fake.f        - builds a model galaxy from ellipse fits
+fake_jed.f    - original Jedrzejewski model program
+iso_prf.f     - output isophotes for fixed ellipses
+jedman.f      - original Jedrzejewski ellipse program
+prf.header    - header file for .prf output from efit (obsolete with XML files)
+prf_clean.f   - clean a frame using ellipses
+prf_smooth.py - smooth ellipses
+prof.old      - original Cawson program
+profile.py    - main ellipse fitting script
+smash.f       - brute force isophote finder given ellipses (obsolete with iso_prf)
+
+WARNING: efit was corrected to add 0.5 to XC and YC after 09 Sep 09

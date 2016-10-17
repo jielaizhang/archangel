@@ -1,0 +1,7 @@
+Value #7 in .prf files displays the status of the fitted isophote
+
+-1 = clean by prf_smooth or prf_edit
+ 0 = determined unfixable, cross-over ellipse
++1 = no iteration fit (i.e. outer ellipses or output from iso_prf)
++n = successful fit after n iterations in prof
+-n = unsuccessful fit after max of n iterations in prof

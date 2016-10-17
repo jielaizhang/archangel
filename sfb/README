@@ -1,0 +1,4 @@
+This directory contains the programs related to surface brightness profiles for the package.
+
+bdd.f   - original FORTRAN version of profile fitting
+bdd.py  - current GUI fitting program

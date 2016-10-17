@@ -1,0 +1,11 @@
+prf file iteration codes
+
+if positive, then shows number of iterations to fit
+
+if negative and equal to iteration limit, failed after iteration limit reached
+
+if -1, cleaned
+
+if 0, unfixable
+
+if -99, marked to cleaning

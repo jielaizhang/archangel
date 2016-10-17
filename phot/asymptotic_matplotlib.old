@@ -1,0 +1,541 @@
+#!/usr/bin/env python
+
+import sys, os.path, pyfits, time
+from pylab import *
+from matplotlib.ticker import MultipleLocator
+from matfunc import *
+from xml.dom import minidom, Node
+from xml_archangel import *
+from matplotlib.patches import Ellipse
+
+def do_fit(x,lum):
+  fit=array([x,lum])
+  a,b,c=polyfit(fit,2)
+  x0=-b/(2.*a)
+  z=[]
+  err=0.
+  for t1,t2 in zip(x,lum):
+    if t1 > x0:
+      z.append(a*x0**2+b*x0+c)
+      err=err+(t2-(a*x0**2+b*x0+c))**2
+    else:
+      z.append(a*t1**2+b*t1+c)
+      err=err+(t2-(a*t1**2+b*t1+c))**2
+  return z,a,b,c,x0,(err/len(x))**0.5
+
+def rat_calc(x,a,degree):
+  n=0.
+  for i in range(degree+1):
+    n=n+a[i]*x**(degree-i)
+  d=1.
+  for i in range(1,degree+1):
+    d=d+a[i+degree]*x**(degree-i+1)
+  return n/d
+
+def min_max():
+  x=[] ; y=[]
+  for tmp in data:
+    x.append(tmp[0])
+    y.append(tmp[1])
+
+  for tmp in data[:imin]:
+    if not tmp[2]:
+      x.append(tmp[0])
+      y.append(tmp[1])
+  xlum=10.**((data[imin-1][1]-zpt)/-2.5)
+  for tmp in data[imin:]:
+    if not tmp[2] and str(tmp[4]) != 'nan':
+      xlum=xlum+10.**(tmp[4]/-2.5)
+      x.append(tmp[0])
+      y.append(-2.5*math.log10(xlum)+zpt)
+
+  for tmp in data[:imin]:
+    if tmp[2]:
+      x.append(tmp[0])
+      y.append(tmp[1])
+  xlum=10.**((data[imin-1][1]-zpt)/-2.5)
+  for tmp in data[imin:]:
+    if tmp[2] and str(tmp[4]) != 'nan':
+      xlum=xlum+10.**(tmp[4]/-2.5)
+      x.append(tmp[0])
+      y.append(-2.5*math.log10(xlum)+zpt)
+
+  xmax=max(x)+0.10*(max(x)-xmin)
+  ymin=min(y)-0.10*(ymax-min(y))
+  return xmax,ymin
+
+def plot_asym():
+  global axe,xmin,xmax,ymin,ymax,data,cmd,line,ft,cid1,cid2,imin,pix,r1,r2,prf,igray
+  global mag1,mag2,x1,x2,err1,err2,asym
+
+  clf() ; axe = fig.add_subplot(111)
+
+  axis([xmin,xmax,ymax,ymin])
+  xlabel('log r')
+  ylabel('mag')
+  suptitle(sys.argv[-1].split('.')[0])
+
+# mark start point for exp addition
+  axe.scatter([data[imin][0]],[data[imin][1]],s=250,marker=(4,0,0),color='g')
+
+# plot prf fitted datapoints, in blue, after start point
+  x=[] ; lum=[] ; iplot=0
+  for tmp in data[:imin+1]: # use raw up to start point
+    if not tmp[2]:
+      iplot=iplot+1 # only plot blue circles after start point
+      x.append(tmp[0])
+      lum.append(tmp[1])
+  xlum=10.**((data[imin][1]-zpt)/-2.5)
+  for tmp in data[imin+1:]:
+    if not tmp[2] and str(tmp[4]) != 'nan':
+      xlum=xlum+10.**(tmp[4]/-2.5)
+      x.append(tmp[0])
+      lum.append(-2.5*math.log10(xlum)+zpt)
+  axe.scatter(x[iplot:],lum[iplot:],s=75,marker='8',edgecolor='b',facecolor='w')
+  axe.set_xlim(xmin,xmax)
+  axe.set_ylim(ymax,ymin)
+
+# plot fit, in blue
+  z,a,b,c,x1,err1=do_fit(x,lum)
+  mag1=a*x1**2+b*x1+c
+  axe.plot(x,z,'b-')
+# mark position of zero slope point
+  text(x1,ymin+0.04*(ymax-ymin),'$\downarrow$',color='b',horizontalalignment='center',verticalalignment='center')
+  err1=find_err()
+  tmp='%6.3f' % (mag1)+' +/- '+'%6.3g' % err1
+  figtext(0.15,0.85,'Raw:',color='b',horizontalalignment='left',verticalalignment='center')
+  figtext(0.22,0.85,tmp,color='b',horizontalalignment='left',verticalalignment='center')
+
+# plot raw photometry datapoints
+  x=[] ; y=[]
+  for tmp in data:
+    x.append(tmp[0])
+    y.append(tmp[1])
+  axe.scatter(x,y,s=50,marker=(6,2,0),color='k')
+  axe.set_xlim(xmin,xmax)
+  axe.set_ylim(ymax,ymin)
+
+# plot prf unfitted data
+  x=[] ; y=[] ; iplot=0
+  for tmp in data[:imin+1]:
+    if tmp[2]:
+      iplot=iplot+1
+      x.append(tmp[0])
+      y.append(tmp[1])
+  xlum=10.**((data[imin][1]-zpt)/-2.5)
+  for tmp in data[imin+1:]:
+    if tmp[2] and str(tmp[4]) != 'nan':
+      xlum=xlum+10.**(tmp[4]/-2.5)
+      x.append(tmp[0])
+      y.append(-2.5*math.log10(xlum)+zpt)
+  if len(x) > iplot:
+    axe.scatter(x[iplot:],y[iplot:],s=75,marker='+',edgecolor='r',facecolor='w')
+    axe.set_xlim(xmin,xmax)
+    axe.set_ylim(ymax,ymin)
+
+# plot exp fitted datapoints
+  x=[] ; lum=[]
+#  for tmp in data[:imin+1]:
+#    if not tmp[2]:
+#      x.append(tmp[0])
+#      lum.append(tmp[1])
+  xlum=10.**((data[imin][1]-zpt)/-2.5)
+  for tmp in data[imin+1:]:
+    if not tmp[2] and str(tmp[5]) != 'nan':
+      xlum=xlum+10.**(tmp[5]/-2.5)
+      x.append(tmp[0])
+      lum.append(-2.5*math.log10(xlum)+zpt)
+  axe.scatter(x,lum,s=75,marker='x',edgecolor='r',facecolor='w')
+  axe.set_xlim(xmin,xmax)
+  axe.set_ylim(ymax,ymin)
+
+# plot fit to sfb fit data
+  z,a,b,c,x2,err2=do_fit(x,lum)
+  mag2=a*x2**2+b*x2+c
+  axe.plot(x,z,'r-')
+  axe.set_xlim(xmin,xmax)
+  axe.set_ylim(ymax,ymin)
+# mark position of zero slope point
+  text(x2,ymin+0.04*(ymax-ymin),'$\downarrow$',color='r',horizontalalignment='center',verticalalignment='center')
+  tmp='%6.3f' % (mag2)+' +/- '+'%6.3g' % err2
+  figtext(0.15,0.82,'Exp:',color='r',horizontalalignment='left',verticalalignment='center')
+  figtext(0.22,0.82,tmp,color='r',horizontalalignment='left',verticalalignment='center')
+
+  pts=reshape(array(x+lum),(2,len(x)))
+  coeff=ratfit(pts)
+#  if coeff[4]**2-4.*coeff[3] > 0:
+#    print 'undefined at',(-coeff[4]+(coeff[4]**2-4.*coeff[3])**0.5)/(2.*coeff[3])
+#    pgswin(0.,1.,0.,1.)
+#    pgptxt(0.07,0.84,0.,0.,'Asy:  NaN')
+#    pgswin(xmin,xmax,ymax,ymin)
+#    asym=float('nan')
+#  else:
+
+  z=[]
+  for tmp in x:
+    z.append(rat_calc(tmp,coeff,2))
+  axe.plot(x,z,'g-')
+  axe.set_xlim(xmin,xmax)
+  axe.set_ylim(ymax,ymin)
+# using last point as asym mag
+# math def is asym=coeff[0]/coeff[3]
+  text(xmax-0.04*(xmax-xmin),rat_calc(x[-1],coeff,2),'$\leftarrow$',color='g',horizontalalignment='center',verticalalignment='center')
+  asym=rat_calc(x[-1],coeff,2)
+  tmp='%6.3f' % (asym)+' +/- '+'%6.3g' % err2
+  figtext(0.15,0.79,'Asy:',color='g',horizontalalignment='left',verticalalignment='center')
+  figtext(0.22,0.79,tmp,color='g',horizontalalignment='left',verticalalignment='center')
+
+# this section draws a green extrapolation for every other raw data point
+#  pgsci(3)
+#  for n,t in enumerate(data[imin:]):
+#    if n%2 == 0:
+#      x=[] ; lum=[]
+#      x.append(t[0])
+#      xlum=10.**((data[n+imin][1]-zpt)/-2.5)
+#      lum.append(-2.5*math.log10(xlum)+zpt)
+#      for tmp in data[n+imin+1:]:
+#        if not tmp[2] and str(tmp[5]) != 'nan':
+#          xlum=xlum+10.**(tmp[5]/-2.5)
+#          x.append(tmp[0])
+#          lum.append(-2.5*math.log10(xlum)+zpt)
+#      pgline(numarray.array(x),numarray.array(lum))
+
+# plot prf unfitted data
+#  pgsci(2)
+#  x=[] ; y=[]
+#  for tmp in data[:imin+1]:
+#    if tmp[2]:
+#      x.append(tmp[0])
+#      y.append(tmp[1])
+#  xlum=10.**((data[imin][1]-zpt)/-2.5)
+#  for tmp in data[imin+1:]:
+#    xlum=xlum+10.**(tmp[5]/-2.5)
+#    if tmp[2]:
+#      x.append(tmp[0])
+#      y.append(-2.5*math.log10(xlum)+zpt)
+#  pgpt(numarray.array(x),numarray.array(y),3) # astericks
+
+# plot error boundaries
+#  pgsci(2)
+#  x=[] ; y=[]
+#  for tmp in data:
+#    n=data.index(tmp)
+#    x.append(tmp[0])
+#    y.append(up[n]-data[n][1]+lum[n])
+#  xs=numarray.array(x) ; ys=numarray.array(y)
+#  pgline(xs,ys)
+#  x=[] ; y=[]
+#  for tmp in data:
+#    n=data.index(tmp)
+#    x.append(tmp[0])
+#    y.append(down[n]-data[n][1]+lum[n])
+#  xs=numarray.array(x) ; ys=numarray.array(y)
+#  pgline(xs,ys)
+
+  if igray:
+    a = axes([.5,.15,.35,.35])
+    setp(a,xticks=[],yticks=[])
+    gray()
+    imshow(-pix,vmin=-r1,vmax=-r2,aspect='equal',origin='lower',interpolation='nearest')
+    for t in prf:
+      if round(t[3],2) == round((10.**(data[imin][0]))/scale,2):
+        e=Ellipse((t[14],t[15]),2.*t[3],2.*t[3]*(1.-t[12]),t[13],fill=0)
+        break
+    e.set_clip_box(a.bbox)
+    e.set_alpha(1.0)
+    e.set_edgecolor('g')
+    a.add_artist(e)
+
+  draw()
+  return mag1,mag2,x1,x2,err1,err2,asym
+
+def find_err():
+  l=0
+  for n in range(len(data)):
+    if data[n][0] > x0:
+      l=n
+      break
+  t1=up[l]+(x0-data[l][0])*(up[l-1]-up[l])/(data[l-1][0]-data[l][0])
+  t2=down[l]+(x0-data[l][0])*(down[l-1]-down[l])/(data[l-1][0]-data[l][0])
+#  asym=a*x0**2+b*x0+c
+#  return (abs(t1-asym)+abs(t2-asym))/2.
+  return abs(t1-t2)/2.
+
+# main
+if sys.argv[1] == '-h':
+  print 'Usage: asymptotic xml_file'
+  print
+  print 'simply GUI that determines asymptotic fit on integrated galaxy mag,'
+  print 'delivers mag/errors from apertures and curve of growth fit into XML file'
+  print
+  print 'cursor commands:'
+  print 'r = reset       z = set profile extrapolation point'
+  print 'x,1,2,3,4 = delete points'
+  print '/ = exit        b = change borders'
+  sys.exit()
+
+if os.path.exists(sys.argv[-1].split('.')[0]+'.xml'):
+  doc = minidom.parse(sys.argv[-1].split('.')[0]+'.xml')
+  rootNode = doc.documentElement
+  elements=xml_read(rootNode).walk(rootNode)
+
+  try:
+    sky=float(elements['sky'][0][1])
+  except:
+    print 'sky value not found, setting to zero'
+    sky=0.
+  try:
+    skysig=float(elements['skysig'][0][1])
+  except:
+    print 'skysig not found, setting to one'
+    skysig=1.
+
+  try:
+    scale=float(elements['scale'][0][1])
+  except:
+    print 'pixel scale value not found, setting to one'
+    scale=1.
+  try:
+    zpt=float(elements['zeropoint'][0][1])
+  except:
+    print 'zeropoint not found, setting to 25.'
+    zpt=25.
+
+  try:
+    for t in elements['array']:
+      if t[0]['name'] == 'ept':
+        pts=[]
+        for z in t[2]['axis']:
+          pts.append(map(float,z[1].split('\n')))
+        tmp=array(pts)
+        pts=swapaxes(tmp,1,0)
+        break
+    else:
+      print 'no ept data in .xml file - aborting'
+      sys.exit()
+  except:
+    raise
+    print 'problem with data in .xml file - aborting'
+    sys.exit()
+
+  data=[]
+# storing log r (arcsecs), app mag, erase flag, number of pixels (for
+# error), prf intensity, exp intensity
+
+  top_lum=pts[-1][1]+zpt
+  imin=0
+  for n,line in enumerate(pts):
+    if len(line) == 5:
+      data.append([math.log10(scale*line[0]),
+                   line[1]+zpt,
+                   0,
+                   line[2],
+                   line[3],
+                   line[4]])
+    else:
+      data.append([math.log10(scale*line[0]),
+                   line[1]+zpt,
+                   0,
+                   line[2],
+                   line[3],
+                   0.])
+    if not imin and line[1]+zpt == top_lum: imin=n-5
+
+  for t in elements['array']:
+     if t[0]['name'] == 'prf':
+       prf=[]
+       for z in t[2]['axis']:
+         prf.append(map(float,z[1].split('\n')))
+       tmp=array(prf)
+       prf=swapaxes(tmp,1,0)
+
+else:
+  print 'no .xml file'
+  sys.exit()
+
+if os.path.exists(sys.argv[-1].split('.')[0]+'.fits'):
+  igray=1
+else:
+  igray=0
+
+if igray:
+  fitsobj=pyfits.open(sys.argv[-1].split('.')[0]+'.fits',"readonly")
+  nx=fitsobj[0].header['NAXIS1']
+  ny=fitsobj[0].header['NAXIS2']
+  aspect=float(ny)/nx
+  hdr=fitsobj[0].header
+  pix=fitsobj[0].data
+  fitsobj.close()
+  r1=sky+50.*skysig
+  r2=sky-0.05*(r1-sky)
+
+# guess for 1/3 total lum to set plot boundaries
+xlum=-2.5*math.log10((10.**(data[-1][1]/-2.5)/3.))
+for n in range(len(data)):
+  if data[n][1] < xlum:
+    mid=n
+    break
+x=[] ; y=[]
+for tmp in data[mid:]:
+  x.append(tmp[0])
+  y.append(tmp[1])
+xmin=min(x)-0.10*(max(x)-min(x))
+ymin=min(y)-0.10*(max(y)-min(y))
+xmax=max(x)+0.10*(max(x)-min(x))
+ymax=max(y)+0.10*(max(y)-min(y))
+for n in range(mid): data[n][2]=1
+
+# assign error bars to each mag
+up=[] ; down=[]
+for i in range(len(data)):
+  up.append(-2.5*math.log10(10.**((data[i][1]-zpt)/-2.5)+(data[i][3]*skysig))+zpt)
+  down.append(-2.5*math.log10(10.**((data[i][1]-zpt)/-2.5)-(data[i][3]*skysig))+zpt)
+
+for line in prf:
+  if round(line[3],2) == round((10.**(data[imin][0]))/scale,2): break
+x0=data[imin][0]
+err=find_err()
+
+if 'deepcore' in os.uname()[1]:
+  fig = figure(figsize=(12, 12), dpi=80)  # initialize plot parameters
+  axe = fig.add_subplot(111)  # assign axe for text and axes
+  manager = get_current_fig_manager() # next 3 lines removes window title and sets geometry of Tk
+  manager.window.title('')
+  manager.window.geometry('+1200+300') # move the window for deepcore big screen
+else:
+  fig = figure(figsize=(9, 9), dpi=80)  # initialize plot parameters
+  axe = fig.add_subplot(111)  # assign axe for text and axes
+  manager = get_current_fig_manager() # next 3 lines removes window title and sets geometry of Tk
+  manager.window.title('')
+  manager.window.geometry('+400+50')
+
+xmax,ymin=min_max()
+line='' ; cmd=''
+
+mag1,mag2,x1,x2,err1,err2,asym=plot_asym()
+
+def get_string(event): # event routine to get strings
+  global axe,xmin,xmax,ymin,ymax,data,cmd,line,ft,cid1,cid2,imin,pix,r1,r2,prf,igray
+  global mag1,mag2,x1,x2,err1,err2,asym
+
+  if event.key == 'enter': # <cr> disconnect, reconnect primary clicker, do action
+    disconnect(cid2)
+    action()
+    mag1,mag2,x1,x2,err1,err2,asym=plot_asym()
+    cid1=connect('key_press_event',clicker)
+
+  elif event.key == 'backspace': # delete characters, stop at 0 or ': '
+    try:
+      if line[-2:] != ': ': line=line[:-1]
+    except:
+      pass
+
+  elif event.key in [None,'shift','control','alt','right','left','up','down','escape']: # ignore weird keys
+    pass
+
+  else:
+    line=line+event.key
+
+  try:
+    fig.texts.remove(ft) # remove the line for redraw
+  except:
+    pass
+
+  ft=figtext(0.1,0.05,line,horizontalalignment='left',verticalalignment='top')
+
+def action(): # do the actions from clicker as given by var cmd
+  global axe,xmin,xmax,ymin,ymax,data,cmd,line,ft,cid1,cid2,imin,pix,r1,r2,prf,igray
+  global mag1,mag2,x1,x2,err1,err2,asym
+
+  try:
+    if cmd == 'b': # do borders
+      xmin=float(line.split(': ')[-1].split()[0])
+      xmax=float(line.split(': ')[-1].split()[1])
+      ymin=float(line.split(': ')[-1].split()[2])
+      ymax=float(line.split(': ')[-1].split()[3])
+  except:
+    fig.texts.remove(ft)
+    ft=figtext(0.1,0.05,'INPUT ERROR',horizontalalignment='left',verticalalignment='top',color='r')
+    time.sleep(2)
+  line=''
+  return
+
+
+def clicker(event):
+  global axe,xmin,xmax,ymin,ymax,data,cmd,line,ft,cid1,cid2,imin,pix,r1,r2,prf,igray
+  global mag1,mag2,x1,x2,err1,err2,asym
+
+  cmd=event.key
+
+  if event.key == 'q':
+    disconnect(cid1)
+    close('all')
+    time.sleep(0.5)
+    sys.exit()
+
+  if event.key == '/':
+    os.system('xml_archangel -e '+sys.argv[-1].split('.')[0]+' tot_rad_raw units=\'arcsecs\' '+'%.2f' % (10.**x1))
+    os.system('xml_archangel -e '+sys.argv[-1].split('.')[0]+' tot_mag_raw units=\'mags\' '+'%.5g' % mag1)
+    os.system('xml_archangel -e '+sys.argv[-1].split('.')[0]+' tot_mag_raw_err units=\'mags\' '+'%.3g' % err1)
+    os.system('xml_archangel -e '+sys.argv[-1].split('.')[0]+' tot_rad_exp units=\'arcsecs\' '+'%.2f' % (10.**x2))
+    os.system('xml_archangel -e '+sys.argv[-1].split('.')[0]+' tot_mag_exp units=\'mags\' '+'%.5g' % mag2)
+    os.system('xml_archangel -e '+sys.argv[-1].split('.')[0]+' tot_mag_exp_err units=\'mags\' '+'%.3g' % err2)
+    if str(asym) != 'nan':
+      os.system('xml_archangel -e '+sys.argv[-1].split('.')[0]+' tot_mag_asym units=\'mags\' '+'%.5g' % asym)
+    disconnect(cid1)
+    close('all')
+    time.sleep(0.5)
+    sys.exit()
+
+  if event.key == 'i' and igray:
+    rmin=1.e33
+    for t in data:
+      r=abs(t[0]-event.xdata)
+      if r < rmin:
+        rmin=r
+        emin=t[0]
+
+  if event.key == 'c' and igray:
+    rold=r1
+    k=event.xdata*1.5/(xmax-xmin)+0.5-1.5*xmin/(xmax-xmin)
+    r1=r1*k
+    if r1 < sky: r1=(rold-sky)/2.+sky
+    r2=sky-0.05*(r1-sky)
+
+  if event.key == 'z':
+    rmin=1.e33
+    for tmp in data:
+      n=data.index(tmp)
+      rr=abs(event.xdata-tmp[0])
+      if rr <= rmin:
+        rmin=rr
+        imin=n
+    for n,tmp in enumerate(data[imin-2:]):
+      data[n+imin-2][2]=0
+#    for line in prf:
+#      if round(line[3],2) == round((10.**(data[imin][0]))/scale,2): break
+
+  if event.key == 'b': line='Enter xmin,xmax,ymin,ymax: '
+
+  if event.key in ['1','2','3','4','x']:
+    rmin=1.e33
+    for n,tmp in enumerate(data):
+      rr=(((event.xdata-tmp[0])/(xmax-xmin))**2+((event.ydata-tmp[1])/(ymax-ymin))**2)**0.5
+      if rr <= rmin:
+        rmin=rr
+        dmin=n
+      if cmd == '1' and tmp[0] > event.xdata and tmp[1] > event.ydata: data[n][2]=abs(data[n][2]-1)
+      if cmd == '2' and tmp[0] < event.xdata and tmp[1] > event.ydata: data[n][2]=abs(data[n][2]-1)
+      if cmd == '3' and tmp[0] < event.xdata and tmp[1] < event.ydata: data[n][2]=abs(data[n][2]-1)
+      if cmd == '4' and tmp[0] > event.xdata and tmp[1] < event.ydata: data[n][2]=abs(data[n][2]-1)
+    if cmd == 'x': data[dmin][2]=abs(data[dmin][2]-1)
+
+  if event.key in ['b']:
+    ft=figtext(0.1,0.05,line,horizontalalignment='left',verticalalignment='top')
+    disconnect(cid1)
+    cid2=connect('key_press_event',get_string)
+  elif event.key not in [None,'shift','control','alt','right','left','up','down','escape']:
+    mag1,mag2,x1,x2,err1,err2,asym=plot_asym()
+
+cid1=connect('key_press_event',clicker)
+show()
