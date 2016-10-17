@@ -271,7 +271,7 @@ try:
       print 'tmp: ',tmp
       print 'mx: ',mx
       print 'sky: ',xsky
-      cmd='gasp_images -f '+prefix+'.clean '+xsky+' '+str((mx-float(xsky))/3.)+' 10 false '+ \
+      cmd='gasp_images -f '+prefix+'.clean '+xsky+' '+str((mx-float(xsky))/3.5)+' 10 false '+ \
           ' | grep -v NaN > '+prefix+'.ims'
       xcmd(cmd,verbose)
       if verbose: print '>> '+xcmd('wc '+prefix+'.ims',False).split()[0]+' targets found'
