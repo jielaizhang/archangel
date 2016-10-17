@@ -68,7 +68,7 @@ if sys.argv[-1] in ['./setup.py','basic','build']:
 
   print 'testing for pyfits package ... ',
   try:
-    import pyfits
+    import astropy.io.fits as pyfits
     print 'ok'
   except:
     print 'failed'
