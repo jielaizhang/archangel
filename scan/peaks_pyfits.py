@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
-import pyfits,sys,os
+import sys,os
+import astropy.io.fits as pyfits
 
 if '-h' in sys.argv:
   print 'peak filename x1,x2,y1,y2 threshold'

@@ -7,7 +7,7 @@
 import sys, os
 from math import *
 import numpy.numarray as numarray
-import pyfits
+import astropy.io.fits as pyfits
 from xml_archangel import *
 import warnings ; warnings.simplefilter('ignore')
 

@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
-import pyfits,sys,os
+import sys,os
+import astropy.io.fits as pyfits
 from math import *
 
 if '-h' in sys.argv:

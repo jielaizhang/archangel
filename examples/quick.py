@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
-import pyfits,sys
+import sys
+import astropy.io.fits as pyfits
 
 fitsobj=pyfits.open('ngc3193_j.fits','readonly')
 hdr=fitsobj[0].header

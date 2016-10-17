@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
-import sys, pyfits, os, os.path, math, numpy
+import sys, os, os.path, math, numpy
+import astropy.io.fits as pyfits
 
 if '-h' in sys.argv:
   print 'dump all pixels in circle: xc, yc, rstart, rend, dx, filename'

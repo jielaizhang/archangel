@@ -2,7 +2,8 @@
 
 # much slower than fortran verison
 
-import pyfits,sys,os
+import sys,os
+import astropy.io.fits as pyfits
 from optparse import OptionParser
 
 if '-h' in sys.argv:

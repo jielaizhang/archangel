@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
-import pyfits,sys,os
+import sys,os
+import astropy.io.fits as pyfits
 import numpy as numarray
 from math import *
 

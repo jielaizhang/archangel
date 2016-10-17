@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
-import pyfits, numdisplay, numpy
+import numdisplay, numpy
+import astropy.io.fits as pyfits
 
 fitsobj=pyfits.open('ned_test.fits',"readonly")
 pix=fitsobj[0].data

@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
-import sys, pyfits
+import sys
+import astropy.io.fits as pyfits
 try:
   import numpy.numarray as numarray
 except:

@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
-import pyfits,sys
+import sys
+import astropy.io.fits as pyfits
 
 fitsobj=pyfits.open(sys.argv[-1],"readonly")
 nx=fitsobj[0].header['NAXIS1']

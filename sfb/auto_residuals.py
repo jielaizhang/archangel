@@ -7,7 +7,7 @@ from math import *
 from xml_archangel import *
 from pylab import *
 from matplotlib.ticker import MultipleLocator
-import pyfits
+import astropy.io.fits as pyfits
 
 def clicker(event):
   global xmin,xmax,ymin,ymax,data,fig,ax

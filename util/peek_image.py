@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
-import pyfits,sys
+import sys
+import astropy.io.fits as pyfits
 
 if len(sys.argv) == 1 or sys.argv[1] == '-h':
   print 'Usage: peek data_file x y range'

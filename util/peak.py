@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
-import pyfits,sys,os
+import sys,os
+import astropy.io.fits as pyfits
 
 fitsobj=pyfits.open(sys.argv[-3],"readonly")
 hdr=fitsobj[0].header

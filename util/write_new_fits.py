@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
-import sys, pyfits
+import sys
+import astropy.io.fits as pyfits
 import numpy.numarray as numarray
 #import numarray
 

@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
-import sys, pyfits, os, os.path, math, numpy
+import sys, os, os.path, math, numpy
+import astropy.io.fits as pyfits
 
 # special unix alias "\*!" to capture []'s, but all sys.argv[-1] one line
 

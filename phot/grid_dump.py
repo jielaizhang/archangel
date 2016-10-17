@@ -6,7 +6,7 @@ try:
 except:
   import numarray
 from xml_archangel import *
-import pyfits
+import astropy.io.fits as pyfits
 
 if sys.argv[1] == '-h' or len(sys.argv) < 2:
   print 'grid_dump op thres data_file'

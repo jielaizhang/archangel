@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 import sys, time
-import pyfits
+import astropy.io.fits as pyfits
 from math import *
 from xml_archangel import *
 import xits

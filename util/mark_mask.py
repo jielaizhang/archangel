@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
-import sys, os, time, pyfits
+import sys, os, time
+import astropy.io.fits as pyfits
 from numpy import *
 from math import *
 from xml.dom import minidom, Node

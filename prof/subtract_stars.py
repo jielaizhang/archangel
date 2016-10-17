@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
-import pyfits, sys, random, os, os.path
+import sys, random, os, os.path
+import astropy.io.fits as pyfits
 from xml_archangel import *
 from math import *
 

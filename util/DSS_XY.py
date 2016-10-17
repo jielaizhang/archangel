@@ -2,7 +2,8 @@
 
 # this routine takes a FITS file and XY coord on frame and returns RA and Dec
 
-import pyfits,sys,math
+import sys,math
+import astropy.io.fits as pyfits
 
 try:
 

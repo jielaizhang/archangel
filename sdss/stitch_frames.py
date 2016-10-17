@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
-import urllib, sys, os, os.path, pyfits, time
+import urllib, sys, os, os.path, time
+import astropy.io.fits as pyfits
 import numpy.numarray as numarray
 from math import *
 

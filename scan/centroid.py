@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
-import pyfits,sys,os
+import sys,os
+import astropy.io.fits as pyfits
 
 if '-h' in sys.argv:
   print 'centroid filename xc yc side'

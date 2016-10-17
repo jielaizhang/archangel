@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
-import optparse, pyfits, os, os.path, sys
+import optparse, os, os.path, sys
+import astropy.io.fits as pyfits
 
 #p=optparse.OptionParser(description='Image arithmetic routine, copied from IRAF, operators = +,-,/,x,*',
 #                        prog='imarith',

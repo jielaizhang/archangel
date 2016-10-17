@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
-import urllib, sys, os, pyfits, numarray
+import urllib, sys, os, numarray
+import astropy.io.fits as pyfits
 from math import *
 
 def xytosky(trans,x,y):

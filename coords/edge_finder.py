@@ -5,7 +5,7 @@ try:
   import numpy.numarray as numarray
 except:
   import numarray
-import pyfits
+import astropy.io.fits as pyfits
 from math import *
 from xml_archangel import *
 

@@ -2,7 +2,8 @@
 
 # python version of fortran min_max, its 6x slower (!)
 
-import pyfits,sys
+import sys
+import astropy.io.fits as pyfits
 
 if len(sys.argv) == 1 or sys.argv[1] =='-h':
   print ' '

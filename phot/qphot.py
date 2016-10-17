@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
-import pyfits,sys,os,time,subprocess,signal
+import sys,os,time,subprocess,signal
+import astropy.io.fits as pyfits
 from math import *
 from xml_archangel import *
 from pylab import *

@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
-import pyfits,sys,os
+import sys,os
+import astropy.io.fits as pyfits
 
 tab=pyfits.open(sys.argv[-1])
 tabhdu=tab[1]

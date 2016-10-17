@@ -3,7 +3,7 @@
 import sys, os, os.path
 from math import *
 from numpy import *
-import pyfits
+import astropy.io.fits as pyfits
 #os.system('setenv PYRAF_NO_DISPLAY 1')
 import pyraf
 from xml_archangel import *

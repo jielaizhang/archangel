@@ -7,7 +7,7 @@ try:
   import numpy.numarray as numarray
 except:
   import numarray
-import pyfits
+import astropy.io.fits as pyfits
 
 def gray(pix,i1,i2,j1,j2,r1,r2):
   pgeras()

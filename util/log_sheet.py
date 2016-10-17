@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
-import os, sys, pyfits
+import os, sys
+import astropy.io.fits as pyfits
 
 if len(sys.argv) == 1:
   tmp=os.popen('ls *.fits').read()

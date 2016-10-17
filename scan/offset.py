@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
-import os,sys,pyfits
+import os,sys
+import astropy.io.fits as pyfits
 
 def do_master(i1,i2):
   tmp=[]

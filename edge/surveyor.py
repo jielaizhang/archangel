@@ -3,7 +3,7 @@
 import sys
 from math import *
 import numarray
-import pyfits
+import astropy.io.fits as pyfits
 
 def xperp(m,b,x,y):
   if m != 0.:

@@ -6,7 +6,7 @@ try:
   import numpy.numarray as numarray
 except:
   import numarray
-import pyfits
+import astropy.io.fits as pyfits
 from xml_archangel import *
 
 def ellipse(axis,x,r,s,xc,yc,th):

@@ -9,7 +9,7 @@ import sys
 import numarray
 from ppgplot import *
 from math import *
-import pyfits
+import astropy.io.fits as pyfits
 from xml_archangel import *
 
 def errorbar(x,y,err,xmin,xmax):

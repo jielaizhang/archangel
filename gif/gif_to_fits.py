@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
-import sys, pyfits
+import sys
+import astropy.io.fits as pyfits
 import numarray
 
 lines=[tmp for tmp in open(sys.argv[-1],'r').readlines()]

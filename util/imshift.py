@@ -5,7 +5,7 @@ try:
   import numpy.numarray as numarray
 except:
   import numarray
-import pyfits
+import astropy.io.fits as pyfits
 
 if '-h' in sys.argv:
   print 'imshift in_file out_file x_shift y_shift'

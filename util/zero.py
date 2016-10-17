@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
-import sys, pyfits, os
+import sys, os
+import astropy.io.fits as pyfits
 
 if len(sys.argv) == 1 or sys.argv[1] == '-h':
   print ' '

@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 import sys, os, subprocess, os.path
-import pyfits
+import astropy.io.fits as pyfits
 
 if sys.argv[1] == '-h':
   print 'edge_fill file xc yc'
