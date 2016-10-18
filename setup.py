@@ -194,7 +194,7 @@ link_files=['profile','offset','offset_imshift','offset_mask','mark','find_targe
             'extreme_lsb','thres_prf','min_max','cir_apert', \
             'elapert','xml_archangel','el','lines','dss_read','cosmo','DSS_XY','hms','fake', \
             'prf_edit','widgets','ned_xml','scan_target','imarith','imstat','imhead','prf_to_xml', \
-            'xits','bdd','residuals','grid_phot','petrosian','ned_photometry','2mass_stitch', \
+            'xits','bdd','bdd_docopt','residuals','grid_phot','petrosian','ned_photometry','2mass_stitch', \
             'two_color','subtract_stars','grid_dump','extract_isophote','sfb_plot','gen_rad_sfb', \
             'total_colors','asymptotic','hist','pick','probe','aperture','contour','chi_grid', \
             'chi_min','fchisq','auto_fit','compare_sersic','double_exp','imcopy',  \
