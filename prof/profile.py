@@ -2,6 +2,7 @@
 
 import os,sys,math
 import tempfile
+import subprocess
 
 # Functions used to filter or massage lines in profile files
 
@@ -265,17 +266,23 @@ try:
 # define a high threshold cut for center search
 
     if '-center' not in s:
+      print 'Still doing this gasp thing---->'
       cmd='min_max '+prefix+'.clean '+ixc+' '+iyc+' 4'
       tmp=xcmd(cmd,verbose)
       mx=float(tmp.split()[13])
       print 'tmp: ',tmp
       print 'mx: ',mx
       print 'sky: ',xsky
-      cmd='gasp_images -f '+prefix+'.clean '+xsky+' '+str((mx-float(xsky))/3.5)+' 10 false '+ \
+      print 'division factor: 3.2'
+      cmd='gasp_images -f '+prefix+'.clean '+xsky+' '+str((mx-float(xsky))/3.2)+' 10 false '+ \
           ' | grep -v NaN > '+prefix+'.ims'
       xcmd(cmd,verbose)
       if verbose: print '>> '+xcmd('wc '+prefix+'.ims',False).split()[0]+' targets found'
       if log: print >> log,'>> '+xcmd('wc '+prefix+'.ims',False).split()[0]+' targets found'
+      print 'print .ims ::::::'
+      cmd='cat '+prefix+'.ims'
+      subprocess.call(cmd,shell=True) 
+      print '<---- Gasp thing done'
 
 # find the galaxy target in the .ims file, weighted by area, new centers
 
