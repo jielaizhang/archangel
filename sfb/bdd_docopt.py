@@ -20,7 +20,7 @@ c = central fit        p = toggle 3fit/4fit
 q = abort              / = write .xml file and exit
 
 Usage: 
-    bin_images [-h] [-v] [-p] [-a] [-w] [-e] [-s] [-z ZP] [-b SKYVAL] [-x SCALE] [-c] [-n] [--errsig] <xmlfile>
+    bin_images [-h] [-v] [-p] [-a] [-w] [-e] [-s] [-z ZP] [-b SKYVAL] [-r SKYSIG] [-x SCALE] [-c] [-n] [--errsig] <xmlfile>
 
 Options:
     -h, --help      Show this screen [default: False]
@@ -32,6 +32,7 @@ Options:
     -s              Start in Sersic mode [default: False]   
     -z ZP           Input zeropoint.
     -b SKYVAL       Input sky background value.
+    -r SKYSIG       Input sky background sigma.
     -x SCALE        Input pixel scale in arcseconds per pixel.
     -c              Not sure what this does
     -n, --nogrey    Not sure what this does
@@ -57,10 +58,10 @@ from pylab import *
 from matplotlib.ticker import MultipleLocator
 from matplotlib.patches import Ellipse
 
-default_zp      = 19.84
+default_zp      = 19.84 #18.93 #19.84
 default_sky     = 0.0
 default_skysig  = 1.0
-default_scale   = 2.85
+default_scale   = 2.0 #12.0 #2.85
 
 def perp(m,b,x,y):
   if m != 0.:
@@ -1347,6 +1348,7 @@ if __name__ == '__main__':
 
     inputzp         = arguments['-z']
     inputsky        = arguments['-b']
+    inputskysig     = arguments['-r']
     inputscale      = arguments['-x']
 
     option_nogrey   = arguments['--nogrey']
@@ -1393,6 +1395,7 @@ if __name__ == '__main__':
 
     if inputsky:
         osky = float(inputsky)
+        sky = osky
     else:
         try:
             osky=float(elements['sky'][0][1])
@@ -1403,10 +1406,13 @@ if __name__ == '__main__':
         except:
             sky=osky
 
-    try:
-      skysig=float(elements['skysig'][0][1])
-    except:
-      skysig=default_skysig
+    if inputskysig:
+        skysig = float(inputskysig)
+    else:
+        try:
+            skysig=float(elements['skysig'][0][1])
+        except:
+            skysig=default_skysig
 
     try:
       s1=float(elements['prf_sky_lower'][0][1])
