@@ -14,6 +14,11 @@ from pylab import *
 from matplotlib.ticker import MultipleLocator
 from matplotlib.patches import Ellipse
 
+import numpy as np
+
+default_zp = 19.84 #binned M101 g: 18.93
+default_scale = 2.0 #12.0
+
 def perp(m,b,x,y):
   if m != 0.:
     c=y+x/m
@@ -354,6 +359,8 @@ def auto_sfb():
         else:
           tmp.append([t[0]*xscale,-2.5*log10((t[1]-sky)/(xscale**2))+cons,1,err])
   data=tmp
+  print 'np.shape(data) in auto_sfb',np.shape(data)
+  print 'data[0]: ',data[0]
   return
 
 def prf_plot(): # display the raw intensity DN
@@ -1360,11 +1367,11 @@ if __name__ == '__main__':
     try:
       xscale=float(elements['scale'][0][1])
     except:
-      xscale=1.
+      xscale=default_scale
     try:
       cons=float(elements['zeropoint'][0][1])
     except:
-      cons=25.
+      cons=default_zp
 
     try:
       k={'U':0.30,'B':0.20,'V':0.14,'R':0.10,'I':0.05,'1563':0.10,'1564':0.10,'1565':0.10,'1566':0.10,'1391':0.10,'1494':0.10}
@@ -1592,3 +1599,4 @@ if __name__ == '__main__':
 
   cid=connect('key_press_event',clicker)
   show()
+  print 'xmax, xmin, xscale: ', xmax, xmin, xscale
