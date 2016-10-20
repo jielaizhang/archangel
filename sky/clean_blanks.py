@@ -3,7 +3,8 @@
 # this script cleans off nonsense values, i.e. for those files which do not
 # use NaN for useless pixels
 
-import pyfits,sys,os
+import sys,os
+import astropy.io.fits as pyfits
 from math import *
 
 # open file, find prefix, cleaned file will be written out as .raw

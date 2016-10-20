@@ -2,7 +2,7 @@
 
 import sys, numarray, math, os
 from ppgplot import *
-import pyfits
+import astropy.io.fits as pyfits
 
 fitsobj=pyfits.open(sys.argv[1],"readonly")
 nx=fitsobj[0].header['NAXIS1']

@@ -2,7 +2,7 @@
 
 import sys, numarray, math, os
 from ppgplot import *
-import pyfits
+import astropy.io.fits as pyfits
 from matfunc import *
 
 def do_fit(x,lum):

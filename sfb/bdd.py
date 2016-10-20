@@ -14,10 +14,8 @@ from pylab import *
 from matplotlib.ticker import MultipleLocator
 from matplotlib.patches import Ellipse
 
-import numpy as np
-
-default_zp = 19.84 #binned M101 g: 18.93
-default_scale = 2.0 #12.0
+arcsecperpix = 2.85
+ZP = 19.84
 
 def perp(m,b,x,y):
   if m != 0.:
@@ -359,8 +357,6 @@ def auto_sfb():
         else:
           tmp.append([t[0]*xscale,-2.5*log10((t[1]-sky)/(xscale**2))+cons,1,err])
   data=tmp
-  print 'np.shape(data) in auto_sfb',np.shape(data)
-  print 'data[0]: ',data[0]
   return
 
 def prf_plot(): # display the raw intensity DN
@@ -370,7 +366,7 @@ def prf_plot(): # display the raw intensity DN
   global chisq_disk,chisq_dev,chisq_sersic,chisq_bulge
 
   axis([xmin,xmax,ymin,ymax])
-  xlabel('r (arcsecs)')
+  xlabel('r (pixels)') # xlabel('r (arcsecs)')
   ylabel('DN')
   suptitle(sys.argv[-1].split('.')[0])
 
@@ -494,11 +490,11 @@ def plot_bdd():
 
   axis([xmin,xmax,ymax,ymin])
   if ifit == 2:
-    xlabel('((a*b)$^{1/2}$)$^{1/4}$ (arcsecs)')
+    xlabel('((a*b)$^{1/2}$)$^{1/4}$ (pixels)') # xlabel('((a*b)$^{1/2}$)$^{1/4}$ (arcsecs)')
   elif ifit == 5:
-    xlabel('log (a*b)$^{1/2}$ (arcsecs)')
+    xlabel('log (a*b)$^{1/2}$ (pixels)') # xlabel('log (a*b)$^{1/2}$ (arcsecs)')
   else:
-    xlabel('r (arcsecs)')
+    xlabel('r (pixels)')  #xlabel('r (arcsecs)')
   ylabel('mag/arcsec$^{-2}$')
   suptitle(sys.argv[-1].split('.')[0])
 
@@ -1367,11 +1363,11 @@ if __name__ == '__main__':
     try:
       xscale=float(elements['scale'][0][1])
     except:
-      xscale=default_scale
+      xscale=arcsecperpix
     try:
       cons=float(elements['zeropoint'][0][1])
     except:
-      cons=default_zp
+      cons=ZP
 
     try:
       k={'U':0.30,'B':0.20,'V':0.14,'R':0.10,'I':0.05,'1563':0.10,'1564':0.10,'1565':0.10,'1566':0.10,'1391':0.10,'1494':0.10}
@@ -1508,18 +1504,17 @@ if __name__ == '__main__':
     sys.exit()
 
   geo=eval(' '.join([tmp[:-1] for tmp in open(os.environ['ARCHANGEL_HOME']+'/.archangel','r').readlines()]))
-
   if 'prometheus' in os.uname()[1]:
     fig = figure(figsize=(12, 12), dpi=80)  # initialize plot parameters
     ax = fig.add_subplot(111)  # assign ax for text and axes
-#    manager = plt.get_current_fig_manager() # next 3 lines removes window title and sets geometry of Tk
-    manager = get_current_fig_manager() # next 3 lines removes window title and sets geometry of Tk
+    manager = plt.get_current_fig_manager() # next 3 lines removes window title and sets geometry of Tk
     manager.window.title('')
     manager.window.geometry('+1200+300') # move the window for deepcore big screen
   else:
     fig = figure(figsize=(9, 9), dpi=80)  # initialize plot parameters
     ax = fig.add_subplot(111)  # assign ax for text and axes
-    manager = get_current_fig_manager() # next 3 lines removes window title and sets geometry of Tk
+    manager = plt.get_current_fig_manager() # next 3 lines removes window title and sets geometry of Tk
+    print 'lala'
     manager.window.title('')
     manager.window.geometry(geo['main_window'])
 #    manager.window.geometry('+400+50')
@@ -1599,4 +1594,3 @@ if __name__ == '__main__':
 
   cid=connect('key_press_event',clicker)
   show()
-  print 'xmax, xmin, xscale: ', xmax, xmin, xscale

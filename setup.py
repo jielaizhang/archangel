@@ -6,7 +6,7 @@
 # in your .cshrc
 # alias imstat '~/archangel/util/imstat.py "\!*"'
 
-# note: gfortran gasp.f -o gasp -L/usr/local/lib -lcfitsio -fno-range-check -finit-local-zero -fno-automatic 
+# note: gfortran gasp.f -o gasp -L/opt/local/lib -lcfitsio -fno-range-check -finit-local-zero -fno-automatic 
 
 import os, sys
 
@@ -97,6 +97,7 @@ if sys.argv[-1] in ['./setup.py','basic','build']:
 
   print 'testing for cfitsio libs ... ',
   try:
+    print 'Trying this: ',complier+' util/cfitsio_test.f -o junk -L/opt/local/lib -lcfitsio -fno-range-check -finit-local-zero -fno-automatic'
     t=os.popen(complier+' util/cfitsio_test.f -o junk -L/opt/local/lib -lcfitsio -fno-range-check -finit-local-zero -fno-automatic').read()
     if 'g' not in t:
       r=os.popen('./junk examples/ned_test.fits').read()
@@ -187,6 +188,9 @@ if sys.argv[-1] in ['./setup.py','basic','build']:
         print 'mkdir',bin
         print
 
+#  bin=(len(os.getcwd().split('/'))-os.getcwd().split('/').index(top)-1)*'../'+'bin/'
+#  bin=os.environ['HOME']+'/bin/'
+
 basic_files=['make_fake','ims_clean','iso_prf','prf_clean','efit','gasp_images','sky_box','mask', \
              'quick_elapert','build_norm']
 link_files=['profile','offset','offset_imshift','offset_mask','mark','find_target', \
@@ -194,7 +198,7 @@ link_files=['profile','offset','offset_imshift','offset_mask','mark','find_targe
             'extreme_lsb','thres_prf','min_max','cir_apert', \
             'elapert','xml_archangel','el','lines','dss_read','cosmo','DSS_XY','hms','fake', \
             'prf_edit','widgets','ned_xml','scan_target','imarith','imstat','imhead','prf_to_xml', \
-            'xits','bdd','bdd_docopt','residuals','grid_phot','petrosian','ned_photometry','2mass_stitch', \
+            'xits','bdd','residuals','grid_phot','petrosian','ned_photometry','2mass_stitch', \
             'two_color','subtract_stars','grid_dump','extract_isophote','sfb_plot','gen_rad_sfb', \
             'total_colors','asymptotic','hist','pick','probe','aperture','contour','chi_grid', \
             'chi_min','fchisq','auto_fit','compare_sersic','double_exp','imcopy',  \
@@ -227,6 +231,14 @@ try:
                  check=open(root+'/'+file+'.f','r').read()
                  options=options+' -L/opt/local/lib -lcfitsio -fno-range-check -finit-local-zero -fno-automatic'
 
+#                 if check.find('pgbegin') > 0: options=options+' -finit-local-zero -L/usr/lib -lpgplot -lX11 -lgcc'
+#                 if check.find('ftopen') > 0:
+#                   if os.uname()[0] == 'Darwin':
+#                     options=options+' -L/usr/local/cfitsio -L/usr/lib -lcfitsio -lm -lgcc'
+#                   elif os.uname()[0] == 'Linux':
+#                     options=options+' -L/usr/local/cfitsio -lcfitsio -lnsl -lm'
+#                   else:
+#                     options=options+' -L/usr/local/cfitsio -lcfitsio -lnsl -lm -lsocket'
                  cmd=complier+root+'/'+file+'.f -o '+bin+'/'+file+options
                  print cmd
                  os.system(cmd)
@@ -330,6 +342,12 @@ try:
         except:
           pass
 
+#  elif sys.argv[-1] == 'chmod':
+#    print 'chmod +x bin/*'
+#    os.system('chmod +x bin/*')
+#    print 'chmod +x */*.py'
+#    os.system('chmod +x */*.py')
+
   else:
 
     try:
@@ -339,7 +357,19 @@ try:
            try:
              if name.split('.')[0] == file and name.split('.')[1] == 'f': 
                check=open(root+'/'+file+'.f','r').read()
-               options=options+' -L/opt/local/lib -lcfitsio -fno-range-check -finit-local-zero -fno-automatic'
+               options=options+' -L/opt/local/cfitsio -lcfitsio -fno-range-check -finit-local-zero -fno-automatic'
+
+#               if check.find('pgbegin') > 0: 
+#                 options=options+' -finit-local-zero -L/usr/lib -lpgplot -lX11 -lgcc'
+#               elif check.find('ftopen') > 0:
+#                 if os.uname()[0] == 'Darwin':
+#                   options=options+' -L/usr/local/cfitsio -L/usr/lib -lcfitsio -lm -lgcc'
+#                 elif os.uname()[0] == 'Linux':
+#                   options=options+' -L/usr/local/cfitsio -lcfitsio -lnsl -lm'
+#                 else:
+#                   options=options+' -L/usr/local/cfitsio -lcfitsio -lnsl -lm -lsocket'
+#               else:
+#                 options=options+' -finit-local-zero -L/usr/lib -lgcc'
                cmd=complier+root+'/'+file+'.f -o '+bin+'/'+file+options
                print cmd
                os.system(cmd)
