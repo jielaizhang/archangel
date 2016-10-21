@@ -505,12 +505,15 @@ try:
     if '-nosm' not in sys.argv:
         cmd='prf_smooth -q '+prefix+'.prf > tmp.prf'
         xcmd(cmd,verbose)
-        replaceNANWithUnity(prefix + '.prf')
+        cmd='cat tmp.prf | grep -v -i i | sed "s/nan/1.0/g" > '+prefix+'.prf'
+        #replaceNANWithUnity(prefix + '.prf')
         os.remove('tmp.prf')
     if '-i' in s:
         open('tmp.tmp','w').write('INTENS INT_ERR GRAD RAD RMSRES FOURSL ITER NUM RESID_1 RESID_2 RESID_3 '+ \
                               'RESID_4 ECC POSANG X0 Y0 FOUR_2 THIRD_2\n')
-        JoinHeaderToProfileAndSaveToXMLFile('tmp.tmp',prefix + '.prf',prefix)
+        cmd='cat tmp.tmp '+prefix+'.prf | xml_archangel -a '+prefix+' prf'
+        xcmd(cmd,verbose)
+        #JoinHeaderToProfileAndSaveToXMLFile('tmp.tmp',prefix + '.prf',prefix)
         os.remove('tmp.tmp')
         xcmd('probe -t '+prefix+'.clean',verbose)
 
@@ -569,24 +572,23 @@ try:
 # first smooth ellipses, build a fake model, subtract from file, find new ims_clean, fit again
 
     if '-nosm' not in sys.argv:
-        cmd='prf_smooth -q '+prefix+'.prf > tmp.prf'
+        cmd='prf_smooth -q '+prefix+'.prf | sed "s/nan/1.0/g" > tmp.prf'
         xcmd(cmd,verbose)
-        replaceNANWithUnity('tmp.prf')
+        #replaceNANWithUnity('tmp.prf')
 
     if '-fake' in s:
-        cmd='iso_prf -q '+prefix+'.clean tmp.prf -sg 0 > '+prefix+'.prf'
+        cmd='iso_prf -q '+prefix+'.clean tmp.prf -sg 0 | grep -v NAN > '+prefix+'.prf'
         xcmd(cmd,verbose)
-        removeLinesWithNAN(prefix+'.prf')
+        #removeLinesWithNAN(prefix+'.prf')
 
         os.remove('tmp.prf')
         cmd='fake -s '+prefix+'.clean '+prefix+'.prf'
         xcmd(cmd,verbose)
         if '-i' in s: xcmd('probe -t '+prefix+'.fake',verbose)
-        cmd='gasp_images -f '+prefix+'.fake 0 '+str(5*float(skysig))+' 10 false > '+ prefix+'.ims'
-        
-        #  ' | grep -v NaN | fltstrm c c r 0 '+str(0.05*nx*nx)+' c c c > '+prefix+'.ims'
+        cmd='gasp_images -f '+prefix+'.fake 0 '+str(5*float(skysig))+' 10 false '+ \
+            ' | grep -v NaN | fltstrm c c r 0 '+str(0.05*nx*nx)+' c c c > '+prefix+'.ims'
         xcmd(cmd,verbose)
-        removeLinesWithNAN(prefix+'.ims')
+        #removeLinesWithNAN(prefix+'.ims')
 
         if verbose: print '>> '+os.popen('wc '+prefix+'.ims').read().split()[0]+' targets found'
         if log: print >> log,'>> '+os.popen('wc '+prefix+'.ims').read().split()[0]+' targets found'
@@ -612,7 +614,9 @@ try:
     if '-i' in s:
         open('tmp.tmp','w').write('INTENS INT_ERR GRAD RAD RMSRES FOURSL ITER NUM RESID_1 RESID_2 RESID_3 '+ \
                               'RESID_4 ECC POSANG X0 Y0 FOUR_2 THIRD_2\n')
-        JoinHeaderToProfileAndSaveToXMLFile('tmp.tmp',prefix + '.prf',prefix)
+        cmd='cat tmp.tmp '+prefix+'.prf | xml_archangel -a '+prefix+' prf'
+        xcmd(cmd,verbose)
+        #JoinHeaderToProfileAndSaveToXMLFile('tmp.tmp',prefix + '.prf',prefix)
         os.remove('tmp.tmp')
         xcmd('probe -t '+prefix+'.clean',verbose)
 
@@ -643,7 +647,9 @@ try:
 
     open('tmp.tmp','w').write('INTENS INT_ERR GRAD RAD RMSRES FOURSL ITER NUM RESID_1 RESID_2 RESID_3 '+ \
                           'RESID_4 ECC POSANG X0 Y0 FOUR_2 THIRD_2\n')
-    JoinHeaderToProfileAndSaveToXMLFile('tmp.tmp',prefix + '.prf',prefix)
+    cmd='cat tmp.tmp '+prefix+'.prf | xml_archangel -a '+prefix+' prf'
+    xcmd(cmd,verbose)
+    #JoinHeaderToProfileAndSaveToXMLFile('tmp.tmp',prefix + '.prf',prefix)
     os.remove('tmp.tmp')
     if '-i' in s:
         xcmd('probe -t '+prefix+'.clean',verbose)
@@ -675,26 +681,30 @@ try:
 
     if '-nosm' not in s:
         if '-dsk' in s:
-            cmd='prf_smooth -s '+prefix+'.prf > tmp.prf'
+            cmd='prf_smooth -s '+prefix+'.prf | sed "s/nan/1.0/g" > tmp.prf'
         else:
-            cmd='prf_smooth -d '+prefix+'.prf > tmp.prf'
+            cmd='prf_smooth -d '+prefix+'.prf | sed "s/nan/1.0/g" > tmp.prf'
         xcmd(cmd,verbose)
-        replaceNANWithUnity('tmp.prf')
-        cmd='iso_prf -q '+prefix+'.clean tmp.prf -sg 0 > '+prefix+'.prf'
+        #replaceNANWithUnity('tmp.prf')
+        cmd='iso_prf -q '+prefix+'.clean tmp.prf -sg 0 | grep -v NAN > '+prefix+'.prf'
         xcmd(cmd,verbose)
-        removeLinesWithNAN(prefix+'.prf')
+        #removeLinesWithNAN(prefix+'.prf')
         os.remove('tmp.prf')
 
         open('tmp.tmp','w').write('INTENS INT_ERR GRAD RAD RMSRES FOURSL ITER NUM RESID_1 RESID_2 RESID_3 '+ \
                               'RESID_4 ECC POSANG X0 Y0 FOUR_2 THIRD_2\n')
-        JoinHeaderToProfileAndSaveToXMLFile('tmp.tmp',prefix + '.prf',prefix) 
+        cmd='cat tmp.tmp '+prefix+'.prf | xml_archangel -a '+prefix+' prf'
+        xcmd(cmd,verbose)
+        #JoinHeaderToProfileAndSaveToXMLFile('tmp.tmp',prefix + '.prf',prefix) 
         os.remove('tmp.tmp')
 
 # final look if not in quiet mode, if changes then probe will run iso_prf
 
     open('tmp.tmp','w').write('INTENS INT_ERR GRAD RAD RMSRES FOURSL ITER NUM RESID_1 RESID_2 RESID_3 '+ \
                                                         'RESID_4 ECC POSANG X0 Y0 FOUR_2 THIRD_2\n')
-    JoinHeaderToProfileAndSaveToXMLFile('tmp.tmp',prefix + '.prf',prefix)
+    #JoinHeaderToProfileAndSaveToXMLFile('tmp.tmp',prefix + '.prf',prefix)
+    cmd='cat tmp.tmp '+prefix+'.prf | xml_archangel -a '+prefix+' prf'
+    xcmd(cmd,verbose)
     os.remove('tmp.tmp')
 
     if '-no_probe' not in s:
