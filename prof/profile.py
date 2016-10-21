@@ -506,6 +506,7 @@ try:
         cmd='prf_smooth -q '+prefix+'.prf > tmp.prf'
         xcmd(cmd,verbose)
         cmd='cat tmp.prf | grep -v -i i | sed "s/nan/1.0/g" > '+prefix+'.prf'
+        xcmd(cmd,verbose)
         #replaceNANWithUnity(prefix + '.prf')
         os.remove('tmp.prf')
     if '-i' in s:
