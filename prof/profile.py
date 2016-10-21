@@ -158,7 +158,7 @@ if not os.path.isfile(prefix+'.xml'):
     xcmd(cmd,verbose)
     first_time=1
 else:
-  first_time=0
+    first_time=0
 
 cmd='keys -p '+prefix+'.'+endfix+' | grep ORIGIN'
 test=os.popen(cmd).read()
