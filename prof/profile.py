@@ -65,84 +65,84 @@ def JoinHeaderToProfileAndSaveToXMLFile(file1,file2,prefix):
     os.unlink(temporaryFile.name)
 
 def xcmd(cmd,verbose):
-  global log
-  if verbose: print '\n'+cmd
-  if log: print >> log,'\n'+cmd
-  tmp=os.popen(cmd)
-  output=''
-  for x in tmp: output+=x
-  if 'abort' in output:
-    failure=True
-  else:
-    failure=tmp.close()
-  if failure:
-    print 'execution of %s failed' % cmd
-    print 'error is as follows',output
-    sys.exit()
-  else:
-    return output
+    global log
+    if verbose: print '\n'+cmd
+    if log: print >> log,'\n'+cmd
+    tmp=os.popen(cmd)
+    output=''
+    for x in tmp: output+=x
+    if 'abort' in output:
+        failure=True
+    else:
+        failure=tmp.close()
+    if failure:
+        print 'execution of %s failed' % cmd
+        print 'error is as follows',output
+        sys.exit()
+    else:
+        return output
 
 #============== MAIN PROGRAM ==============
 
 # main - ellipse fitting script
 
 if len(sys.argv) == 1 or sys.argv[1] == '-h':
-  print ' '
-  print 'Usage: profile file_name options'
-  print ' '
-  print 'Options: -h = this message'
-  print '         -i = inspect ellipses after each fit'
-  print '         -l = keep a log in prefix.log'
-  print '        -xy = force center xc and yc'
-  print '    -center = take center from probe'
-  print '        -rx = radius to stop fitting'
-  print '        -rs = radius to stop'
-  print '        -sg = sigma for prf cleaning (default is 4)'
-  print '  -no_clean = no cleaning inside this radius (if 0, no cleaning)'
-  print '       -lsb = lsb ims clean, assume no gal'
-  print '       -ell = elliptical galaxy, robust cleaning'
-  print '       -dsk = sprial galaxy, limited cleaning, smooth for disk'
-  print '       -spr = sprial galaxy, limited cleaning, normal smooth'
-  print '       -ext = extreme LSB object, force fit'
-  print '        -st = change starting radius for fit (default is 4 pixels)'
-  print '      -fake = use fake subtraction'
-  print '      -nosm = do not smooth final profile'
-  print '  -no_probe = do not show fit'
-  print '         -q = run quiet'
-  sys.exit(0)
+    print ' '
+    print 'Usage: profile file_name options'
+    print ' '
+    print 'Options: -h = this message'
+    print '         -i = inspect ellipses after each fit'
+    print '         -l = keep a log in prefix.log'
+    print '        -xy = force center xc and yc'
+    print '    -center = take center from probe'
+    print '        -rx = radius to stop fitting'
+    print '        -rs = radius to stop'
+    print '        -sg = sigma for prf cleaning (default is 4)'
+    print '  -no_clean = no cleaning inside this radius (if 0, no cleaning)'
+    print '       -lsb = lsb ims clean, assume no gal'
+    print '       -ell = elliptical galaxy, robust cleaning'
+    print '       -dsk = sprial galaxy, limited cleaning, smooth for disk'
+    print '       -spr = sprial galaxy, limited cleaning, normal smooth'
+    print '       -ext = extreme LSB object, force fit'
+    print '        -st = change starting radius for fit (default is 4 pixels)'
+    print '      -fake = use fake subtraction'
+    print '      -nosm = do not smooth final profile'
+    print '  -no_probe = do not show fit'
+    print '         -q = run quiet'
+    sys.exit(0)
 
 # read the data file (.fits?), its endifix and any options
 
 home=os.environ['ARCHANGEL_HOME']
 
 if '.' not in sys.argv[1]:
-  prefix=sys.argv[1]
-  endfix='fits'
+    prefix=sys.argv[1]
+    endfix='fits'
 else:
-  prefix=sys.argv[1].split('.')[0]
-  endfix=sys.argv[1].split('.')[1]
-  if endfix == '': endfix='fits'
+    prefix=sys.argv[1].split('.')[0]
+    endfix=sys.argv[1].split('.')[1]
+    if endfix == '': endfix='fits'
 
 # determine if in quiet mode and/or keeping a log
 
 s=' '.join(sys.argv[2:])
 
 if '-q' in s:
-  verbose=False
+    verbose=False
 else:
-  verbose=True
+    verbose=True
 
 if '-l' in s:
-  log=open(prefix+'.log','w')
+    log=open(prefix+'.log','w')
 else:
-  log=None
+    log=None
 
 # test for file
 
 if not os.path.isfile(prefix+'.'+endfix):
-  if verbose: print prefix+'.'+endfix+' not found, aborting'
-  if log: print >> log,prefix+'.'+endfix+' not found, aborting'
-  sys.exit(0)
+    if verbose: print prefix+'.'+endfix+' not found, aborting'
+    if log: print >> log,prefix+'.'+endfix+' not found, aborting'
+    sys.exit(0)
 
 # find the size of the file, nx and ny
 
@@ -154,9 +154,9 @@ ny=int(xcmd(cmd,False).split()[2])
 # check if this is 2MASS data, open .xml file and enter calibration
 
 if not os.path.isfile(prefix+'.xml'):
-  cmd='xml_archangel -c '+prefix+' archangel'
-  xcmd(cmd,verbose)
-  first_time=1
+    cmd='xml_archangel -c '+prefix+' archangel'
+    xcmd(cmd,verbose)
+    first_time=1
 else:
   first_time=0
 
@@ -164,18 +164,18 @@ cmd='keys -p '+prefix+'.'+endfix+' | grep ORIGIN'
 test=os.popen(cmd).read()
 
 if '2MASS' in test:
-  cmd='xml_archangel -e '+prefix+' scale units=\'arcsecs/pixel\' 1.0'
-  xcmd(cmd,verbose)
-  # find zeropoint, assume last letter on prefix is bandpass
-  cmd='keys -p '+prefix+'.'+endfix+' | grep '+prefix[-1].upper()+'MAGZP'
-  if verbose: print cmd
-  test=os.popen(cmd).read()
-  if not test:
-    cmd='keys -p '+prefix+'.'+endfix+' | grep MAGZP'
+    cmd='xml_archangel -e '+prefix+' scale units=\'arcsecs/pixel\' 1.0'
+    xcmd(cmd,verbose)
+    # find zeropoint, assume last letter on prefix is bandpass
+    cmd='keys -p '+prefix+'.'+endfix+' | grep '+prefix[-1].upper()+'MAGZP'
     if verbose: print cmd
     test=os.popen(cmd).read()
-  cmd='xml_archangel -e '+prefix+' zeropoint '+test.split()[2]
-  xcmd(cmd,verbose)
+    if not test:
+        cmd='keys -p '+prefix+'.'+endfix+' | grep MAGZP'
+        if verbose: print cmd
+        test=os.popen(cmd).read()
+    cmd='xml_archangel -e '+prefix+' zeropoint '+test.split()[2]
+    xcmd(cmd,verbose)
 
 # start the fitting process, large try/except region
 
