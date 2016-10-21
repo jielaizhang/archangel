@@ -103,7 +103,7 @@ test=os.popen(cmd).read()
 if '2MASS' in test:
     cmd='xml_archangel -e '+prefix+' scale units=\'arcsecs/pixel\' 1.0'
     xcmd(cmd,verbose)
-# find zeropoint, assume last letter on prefix is bandpass
+    # find zeropoint, assume last letter on prefix is bandpass
     cmd='keys -p '+prefix+'.'+endfix+' | grep '+prefix[-1].upper()+'MAGZP'
     if verbose: print cmd
     test=os.popen(cmd).read()
@@ -150,7 +150,6 @@ try:
 #      xcmd(cmd,verbose)
 
 # read sky value or do rough border fit using sky_box
-
     try:
         cmd='xml_archangel -o '+prefix+' sky'
         xsky=xcmd(cmd,verbose).replace('\n','')
