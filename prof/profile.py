@@ -368,7 +368,9 @@ try:
         if verbose: print 'cant find the galaxy, use -xy and -rs options'
         if log: print >> log,'cant find the galaxy, use -xy and -rs options'
         for fix in ['.iso_prf','.fake','.ims']:
-            if os.path.isfile(prefix+fix): os.remove(prefix+fix)
+            if os.path.isfile(prefix+fix): 
+                os.remove(prefix+fix)
+                print 'Removed: ',prefix+fix
         sys.exit(0)
     else:
         if '-rx' in s:
@@ -462,7 +464,9 @@ try:
         print '\n'+cmd
         os.system(cmd)
         for fix in ['.iso_prf','.fake','.ims']:
-            if os.path.isfile(prefix+fix): os.remove(prefix+fix)
+            if os.path.isfile(prefix+fix): 
+                os.remove(prefix+fix)
+                print 'Removed: ',prefix+fix
         sys.exit(0)
 
 # erase the old jedsub file, cleaned output from ellipse fitting
