@@ -275,72 +275,72 @@ try:
         
 # define a high threshold cut for center search
 
-    if '-center' not in s:
-      print 'Still doing this gasp thing---->'
-      cmd='min_max '+prefix+'.clean '+ixc+' '+iyc+' 4'
-      tmp=xcmd(cmd,verbose)
-      mx=float(tmp.split()[13])
-      print 'tmp: ',tmp
-      print 'mx: ',mx
-      print 'sky: ',xsky
-      print 'division factor: 3.2'
-      cmd='gasp_images -f '+prefix+'.clean '+xsky+' '+str((mx-float(xsky))/3.2)+' 10 false '+ \
-          ' | grep -v NaN > '+prefix+'.ims'
-      xcmd(cmd,verbose)
-      if verbose: print '>> '+xcmd('wc '+prefix+'.ims',False).split()[0]+' targets found'
-      if log: print >> log,'>> '+xcmd('wc '+prefix+'.ims',False).split()[0]+' targets found'
-      print 'print .ims ::::::'
-      cmd='cat '+prefix+'.ims'
-      subprocess.call(cmd,shell=True) 
-      print '<---- Gasp thing done'
+        if '-center' not in s:
+            print 'Still doing this gasp thing---->'
+            cmd='min_max '+prefix+'.clean '+ixc+' '+iyc+' 4'
+            tmp=xcmd(cmd,verbose)
+            mx=float(tmp.split()[13])
+            print 'tmp: ',tmp
+            print 'mx: ',mx
+            print 'sky: ',xsky
+            print 'division factor: 3.2'
+            cmd='gasp_images -f '+prefix+'.clean '+xsky+' '+str((mx-float(xsky))/3.2)+' 10 false '+ \
+                ' | grep -v NaN > '+prefix+'.ims'
+            xcmd(cmd,verbose)
+            if verbose: print '>> '+xcmd('wc '+prefix+'.ims',False).split()[0]+' targets found'
+            if log: print >> log,'>> '+xcmd('wc '+prefix+'.ims',False).split()[0]+' targets found'
+            print 'print .ims ::::::'
+            cmd='cat '+prefix+'.ims'
+            subprocess.call(cmd,shell=True) 
+            print '<---- Gasp thing done'
 
 # find the galaxy target in the .ims file, weighted by area, new centers
 
-      cmd='find_target -q '+prefix+'.ims '+ixc+' '+iyc+' '+str(nx/10)
-      tmp=xcmd(cmd,verbose)
-      if 'no target' not in tmp:
-        ixc=tmp.split()[0]
-        iyc=tmp.split()[1]
-        rstop=tmp.split()[2]
-        print 'rstop, based on find_target: ',rstop
-        print 'router not defined here'
-        eps=float(tmp.split()[3])
-        theta=tmp.split()[4]
-        cmd='find_target -s '+prefix+'.ims '+ixc+' '+iyc+' '+str(nx/10)+' > s.tmp'
-        tmp=xcmd(cmd,verbose)
-      else:
-        ixc=str(nx/2)
-        iyc=str(ny/2)
+            cmd='find_target -q '+prefix+'.ims '+ixc+' '+iyc+' '+str(nx/10)
+            tmp=xcmd(cmd,verbose)
+            if 'no target' not in tmp:
+                ixc=tmp.split()[0]
+                iyc=tmp.split()[1]
+                rstop=tmp.split()[2]
+                print 'rstop, based on find_target: ',rstop
+                print 'router not defined here'
+                eps=float(tmp.split()[3])
+                theta=tmp.split()[4]
+                cmd='find_target -s '+prefix+'.ims '+ixc+' '+iyc+' '+str(nx/10)+' > s.tmp'
+                tmp=xcmd(cmd,verbose)
+            else:
+                ixc=str(nx/2)
+                iyc=str(ny/2)
 
-    if '-no_probe' not in s:
-      if endfix != 'clean':
-        tmp=os.popen('probe -s -i -v '+prefix+'.'+endfix).read()
-        os.system('cp -f '+prefix+'.clean '+prefix+'.backup')
-        print 'cp -f '+prefix+'.clean '+prefix+'.backup'
-      if tmp:
-        if 'abort' in tmp.lower():
-          if first_time:
-            os.remove(prefix+'.xml')
-            os.remove(prefix+'.ims')
-          print tmp[:-1]; sys.exit()
-        elif '-center' in s:
-          ixc=tmp.split()[-2]
-          iyc=tmp.split()[-1]
-          print 'using',ixc,'and',iyc,'for center from probe'
-          try:
-            cmd='xml_archangel -o '+prefix+' sky'
-            xsky=xcmd(cmd,False).replace('\n','')
-            cmd='xml_archangel -o '+prefix+' skysig'
-            skysig=xcmd(cmd,False).replace('\n','')
-          except:
-            pass
+        if '-no_probe' not in s:
+            if endfix != 'clean':
+                tmp=os.popen('probe -s -i -v '+prefix+'.'+endfix).read()
+                os.system('cp -f '+prefix+'.clean '+prefix+'.backup')
+                print 'cp -f '+prefix+'.clean '+prefix+'.backup'
+            if tmp:
+                if 'abort' in tmp.lower():
+                    if first_time:
+                        os.remove(prefix+'.xml')
+                        os.remove(prefix+'.ims')
+                    print tmp[:-1]; sys.exit()
+                elif '-center' in s:
+                    ixc=tmp.split()[-2]
+                    iyc=tmp.split()[-1]
+                    print 'using',ixc,'and',iyc,'for center from probe'
+                    try:
+                        cmd='xml_archangel -o '+prefix+' sky'
+                        xsky=xcmd(cmd,False).replace('\n','')
+                        cmd='xml_archangel -o '+prefix+' skysig'
+                        skysig=xcmd(cmd,False).replace('\n','')
+                    except:
+                        pass
         
-        if verbose: print '**** added',tmp[:-1],'option'
-        s=s+' '+tmp[:-1]
-    try:
-      os.remove('s.tmp')
-    except:
-      pass
+                if verbose: print '**** added',tmp[:-1],'option'
+                s=s+' '+tmp[:-1]
+        try:
+            os.remove('s.tmp')
+        except:
+            pass
 
 # locate all the objects for cleaning and outer edge determination of target
 
