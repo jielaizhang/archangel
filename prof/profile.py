@@ -356,10 +356,9 @@ try:
     cmd='find_target -q '+prefix+'.ims '+ixc+' '+iyc+' '+str(nx/10)
     tmp=xcmd(cmd,verbose)
 
-#XXXXXXX
-  #cmd='gasp_images -f '+prefix+'.clean '+xsky+' '+str(search_sig*float(skysig))+' 10 false '+ \
-  #    ' | grep -v NaN | fltstrm c c r 0 '+str(0.05*nx*nx)+' c c c > '+prefix+'.ims'
-  #xcmd(cmd,verbose)
+    cmd='gasp_images -f '+prefix+'.clean '+xsky+' '+str(search_sig*float(skysig))+' 10 false '+ \
+        ' | grep -v NaN | fltstrm c c r 0 '+str(0.05*nx*nx)+' c c c > '+prefix+'.ims'
+    xcmd(cmd,verbose)
 
 # rstop is place to stop fitting (the 5 sigma level, or above for lsb), or given by user
 
