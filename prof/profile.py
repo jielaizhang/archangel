@@ -277,6 +277,7 @@ try:
 
         if '-center' not in s:
             print 'Still doing this gasp thing---->'
+            # Search for min, max within 4 pixel radius of centre pixel
             cmd='min_max '+prefix+'.clean '+ixc+' '+iyc+' 4'
             tmp=xcmd(cmd,verbose)
             mx=float(tmp.split()[13])
@@ -297,6 +298,7 @@ try:
 # find the galaxy target in the .ims file, weighted by area, new centers
 
             cmd='find_target -q '+prefix+'.ims '+ixc+' '+iyc+' '+str(nx/10)
+            # Usage: find_target option ims_file xc yc limit
             tmp=xcmd(cmd,verbose)
             if 'no target' not in tmp:
                 ixc=tmp.split()[0]
@@ -316,7 +318,6 @@ try:
             if endfix != 'clean':
                 tmp=os.popen('probe -s -i -v '+prefix+'.'+endfix).read()
                 os.system('cp -f '+prefix+'.clean '+prefix+'.backup')
-                print 'cp -f '+prefix+'.clean '+prefix+'.backup'
             if tmp:
                 if 'abort' in tmp.lower():
                     if first_time:
@@ -341,6 +342,7 @@ try:
             os.remove('s.tmp')
         except:
             pass
+    #### Have now defined ixc, iyc, eps, theta, rstop
 
 # locate all the objects for cleaning and outer edge determination of target
 
@@ -387,6 +389,7 @@ try:
             print 'router not defined here'
             eps=float(tmp.split()[3])
             theta=tmp.split()[4]
+    #### Have now re-defined eps, theta, rstop 
 
     if float(rstop) > 1200: 
         rstop='1200'
@@ -407,6 +410,7 @@ try:
         router=int(max((float(rstop)+float(rstop)*0.80),min(nx,ny)/2.))
         print '-rx not in options, router: ',router
         if '-lsb' in s: 
+            #### If -lsb, fit out to a larger radius
             router=int(min(nx,ny)/2.+min(nx,ny)/6.)
             print '-rx not in options -lsb is, router: ',router
     
@@ -419,10 +423,13 @@ try:
 
 # set the deleion sigmas depending on what kind of galaxy is being fit, default is elliptical
 
+    #### help says -sg is sigma for prf cleaning
     if '-sg' in s: 
         sig=s.split()[s.split().index('-sg')+1]
         prof_sig=str(10*int(sig))
     else:
+        ####-dsk = sprial galaxy, limited cleaning, smooth for disk
+        ####-spr = sprial galaxy, limited cleaning, normal smooth
         if '-lsb' in s:
             sig='6'
             prof_sig='0'
@@ -446,11 +453,13 @@ try:
         if '-lsb' in s:
             cmd='ims_clean -q '+prefix+'.clean '+prefix+'.ims 1.5 '+ixc+' '+iyc+' 0'
         elif '-ext' in s:
+            ####-ext = extreme LSB object, force fit
             cmd='ims_clean -q '+prefix+'.clean '+prefix+'.ims 1.5 '+ixc+' '+iyc+' '+str(clean_rad)+' '+str(eps)+' '+theta
         else:
             cmd='ims_clean -q '+prefix+'.clean '+prefix+'.ims 1.5 '+ixc+' '+iyc+' '+str(clean_rad)+' '+str(eps)+' '+theta
         tmp=xcmd(cmd,verbose)
     if '-i' in s:
+        ####-i = inspect ellipses after each fit
         print '\ndisplaying cleaned image',
         xcmd('probe '+prefix+'.clean',verbose)
 
@@ -505,6 +514,7 @@ try:
     if '-nosm' not in sys.argv:
         cmd='prf_smooth -q '+prefix+'.prf > tmp.prf'
         xcmd(cmd,verbose)
+        #### grep -v -i i is grep opposite of lines containing letter i
         cmd='cat tmp.prf | grep -v -i i | sed "s/nan/1.0/g" > '+prefix+'.prf'
         xcmd(cmd,verbose)
         #replaceNANWithUnity(prefix + '.prf')
@@ -531,6 +541,7 @@ try:
 
 # 2nd fit, with cleaned file, out to far edge, 1st determine mean ecc for sigma deletions
 
+    ####.prf is a text file, a line of numbers for each ellipse found, output by efit
     file=open(prefix+'.prf','r')
     eps=0.
     npts=0
@@ -556,6 +567,7 @@ try:
         cmd='efit -q '+prefix+'.clean '+prefix+'.prf -xy '+ixc+' '+iyc+' -sg '+prof_sig+' -rx '+ \
                   rstop+' -rs '+str(router)+' -st '+tmp
     else:
+        #### Previous efit was done out to router/3
         cmd='efit -q '+prefix+'.clean '+prefix+'.prf -xy '+ixc+' '+iyc+' -sg '+prof_sig+' -rx '+rstop+' -rs '+str(router)
     xcmd(cmd,verbose)
     os.system('grep -v -i I '+prefix+'.prf > tmp.tmp')
@@ -573,11 +585,14 @@ try:
 # first smooth ellipses, build a fake model, subtract from file, find new ims_clean, fit again
 
     if '-nosm' not in sys.argv:
+        #### This is not first time of prf_smooth, it doesn't seem to change the prf file 
+        #### Looked at code comments- it checks if there are too wild changes of pos angle and fixes it
         cmd='prf_smooth -q '+prefix+'.prf | sed "s/nan/1.0/g" > tmp.prf'
         xcmd(cmd,verbose)
         #replaceNANWithUnity('tmp.prf')
 
-    if '-fake' in s:
+    if '-fake' in s:    
+        #### -fake = use fake subtraction
         cmd='iso_prf -q '+prefix+'.clean tmp.prf -sg 0 | grep -v NAN > '+prefix+'.prf'
         xcmd(cmd,verbose)
         #removeLinesWithNAN(prefix+'.prf')
@@ -606,6 +621,7 @@ try:
 
     if sig != '0' and clean_rad > 0:
 #    cmd='prf_clean -f '+prefix+'.clean '+prefix+'.prf '+sig+' '+str(clean_rad)
+        #### each prf_clean masks out more sources (as saved in .clean file)
         cmd='prf_clean -f '+prefix+'.clean '+prefix+'.prf '+sig+' 10'
         xcmd(cmd,verbose)
         if os.path.isfile(prefix+'.prf_clean'):
